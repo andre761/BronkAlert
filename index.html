@@ -45,6 +45,10 @@ input,select{width:100%;background:#09182a;border:1px solid var(--line);color:#f
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:13px;border-bottom:1px solid var(--line)}th{color:var(--muted)}
 .live{display:inline-flex;align-items:center;gap:7px;color:var(--green);font-size:12px}.live i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
 
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#0c1b2e;border:1px solid var(--line);border-left:4px solid var(--green);color:#fff;padding:14px 22px;border-radius:12px;box-shadow:0 20px 45px rgba(0,0,0,.45);font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;z-index:60;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:560px){.toast{bottom:18px;padding:12px 18px;font-size:13px}}
+
 /* Autenticação */
 .auth-screen{position:fixed;inset:0;background:linear-gradient(135deg,#00081a,#001028 45%,#0a1830);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;overflow:auto}
 .auth-box{width:100%;max-width:420px;background:linear-gradient(145deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:20px;padding:30px 26px;box-shadow:var(--shadow)}
@@ -346,7 +350,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
   <div class="section"><h2>Ações rápidas</h2><div class="quick">
     <div class="card" onclick="openModal()"><div class="icon">🫁</div><b>Fazer avaliação</b><div class="small">Registrar sintomas e sinais.</div></div>
     <div class="card" onclick="showPage('historico')"><div class="icon">📊</div><b>Ver histórico</b><div class="small">Acompanhar evolução.</div></div>
-    <div class="card" onclick="alert('Fluxo demonstrativo: em uma versão real, esta ação acionaria o protocolo configurado.')"><div class="icon">🚨</div><b>Protocolo de alerta</b><div class="small">Consultar orientação de emergência.</div></div>
+    <div class="card" onclick="showToast('Fluxo demonstrativo: em uma versão real, esta ação acionaria o protocolo configurado.')"><div class="icon">🚨</div><b>Protocolo de alerta</b><div class="small">Consultar orientação de emergência.</div></div>
     <div class="card" onclick="showPage('bronquiolite',document.querySelectorAll('.nav button')[1])"><div class="icon">📖</div><b>Sobre a bronquiolite</b><div class="small">Sintomas, prevenção e cuidados.</div></div>
   </div></div>
 </section>
@@ -515,6 +519,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <label>Frequência respiratória</label><input id="mresp" type="number" value="16" min="5" max="50">
 <button class="action" onclick="saveModal()">Salvar avaliação</button></div></div>
 
+<div class="toast" id="toast"></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
@@ -537,13 +543,22 @@ function showPage(id,btn){
 }
 function openModal(){document.getElementById('modal').classList.add('show')}
 function closeModal(){document.getElementById('modal').classList.remove('show')}
+let toastTimer=null;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ t.classList.remove('show'); },3200);
+}
+
 function saveModal(){
   const s=document.getElementById('mspo').value, r=document.getElementById('mresp').value;
   document.getElementById('spo').textContent=s+'%'; document.getElementById('resp').textContent=r;
-  closeModal(); showPage('monitoramento',document.querySelectorAll('.nav button')[1]);
-  alert('Avaliação registrada no protótipo.');
+  closeModal(); showPage('monitoramento',document.querySelectorAll('.nav button')[2]);
+  showToast('Avaliação registrada no protótipo.');
 }
-function saveAssessment(){alert('Avaliação registrada com sucesso no protótipo.');}
+function saveAssessment(){showToast('Avaliação registrada com sucesso no protótipo.');}
 setInterval(()=>{
   const s=97+Math.round((Math.random()-.5)*2);
   const r=16+Math.round((Math.random()-.5)*2);
