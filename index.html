@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BronqAlert — Protótipo do App</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <style>
 :root{
   --bg:#001028; --panel:#0b1c33; --panel2:#0f2440; --line:#1c3652;
@@ -79,16 +80,27 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
 /* Região monitorada: São Paulo */
 .sp-locate{background:#08172b;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px}
-.sp-zones{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:14px;margin:4px 0 18px}
-.sp-zone{position:relative;aspect-ratio:1;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:10px;color:#04101f;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,.25);transition:transform .15s}
-.sp-zone:hover{transform:translateY(-3px)}
-.sp-zone.lvl0{background:var(--green)}
-.sp-zone.lvl1{background:var(--yellow)}
-.sp-zone.lvl3{background:var(--red);color:#fff}
-.sp-zone-name{font-size:14px}
-.sp-zone-casos{font-size:11px;font-weight:600;opacity:.85}
-.sp-zone.here{outline:3px solid #fff;outline-offset:2px;transform:translateY(-3px)}
-.sp-zone-pin{position:absolute;top:-10px;right:-8px;background:#fff;color:#0d1b2e;font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.sp-map{height:420px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#08172b}
+.sp-map .leaflet-popup-content-wrapper{background:#0c1b2e;color:#f5f8fc;border-radius:12px}
+.sp-map .leaflet-popup-content{margin:12px 14px;font-family:inherit;font-size:13px}
+.sp-map .leaflet-popup-tip{background:#0c1b2e}
+.sp-map-attr{font-size:10.5px;color:var(--muted);text-align:right;margin-top:6px}
+.sp-map-attr a{color:var(--muted)}
+.user-pin-dot{width:16px;height:16px;border-radius:50%;background:var(--blue);border:3px solid #fff;box-shadow:0 0 0 4px rgba(57,185,255,.35);animation:pinPulse 1.8s ease-in-out infinite}
+@keyframes pinPulse{0%,100%{box-shadow:0 0 0 4px rgba(57,185,255,.35)}50%{box-shadow:0 0 0 9px rgba(57,185,255,.12)}}
+.sp-chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 18px}
+.sp-chip{display:flex;align-items:center;gap:7px;background:#08172b;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px}
+.sp-chip.here{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+.sp-chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.sp-chip.lvl0 i{background:var(--green)}
+.sp-chip.lvl1 i{background:var(--yellow)}
+.sp-chip.lvl3 i{background:var(--red)}
+.sp-chip b{font-weight:700}
+.sp-chip span.casos{color:var(--muted)}
+
+/* Página Bronquiolite */
+.info-list{margin:0;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.9}
+.info-list li{margin-bottom:2px}
 
 /* Mapa do Brasil por estado */
 .map-card{padding:22px}
@@ -121,7 +133,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
   .map-head{flex-direction:column}
   .map-summary{gap:14px}
   .brazil-svg{max-height:440px}
-  .map-wrap{padding:8px}}
+  .map-wrap{padding:8px}
+  .sp-map{height:300px}}
 @media(max-width:380px){.auth-row{grid-template-columns:1fr}.auth-box{padding:24px 18px}}
 </style>
 </head>
@@ -174,6 +187,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
   <div class="brand"><img src="logo.png" alt="BronqAlert"></div>
   <nav class="nav">
     <button class="active" onclick="showPage('dashboard',this)"><span>⌂</span>Dashboard</button>
+    <button onclick="showPage('bronquiolite',this)"><span>🫁</span>Bronquiolite</button>
     <button onclick="showPage('monitoramento',this)"><span>◉</span>Monitoramento</button>
     <button onclick="showPage('avaliacao',this)"><span>✚</span>Avaliação</button>
     <button onclick="showPage('historico',this)"><span>▤</span>Histórico</button>
@@ -206,7 +220,10 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
       <div class="sp-locate" id="spLocate">Cadastre seu endereço para localizarmos sua zona.</div>
 
-      <div class="sp-zones" id="spZones"></div>
+      <div id="spMap" class="sp-map"></div>
+      <div class="sp-map-attr">Mapa: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div>
+
+      <div class="sp-chips" id="spChips"></div>
 
       <div class="legend map-legend">
         <span><i class="dot lvl0"></i>Baixo</span>
@@ -307,7 +324,64 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
     <div class="card" onclick="openModal()"><div class="icon">🫁</div><b>Fazer avaliação</b><div class="small">Registrar sintomas e sinais.</div></div>
     <div class="card" onclick="showPage('historico')"><div class="icon">📊</div><b>Ver histórico</b><div class="small">Acompanhar evolução.</div></div>
     <div class="card" onclick="alert('Fluxo demonstrativo: em uma versão real, esta ação acionaria o protocolo configurado.')"><div class="icon">🚨</div><b>Protocolo de alerta</b><div class="small">Consultar orientação de emergência.</div></div>
+    <div class="card" onclick="showPage('bronquiolite',document.querySelectorAll('.nav button')[1])"><div class="icon">📖</div><b>Sobre a bronquiolite</b><div class="small">Sintomas, prevenção e cuidados.</div></div>
   </div></div>
+</section>
+
+<section id="bronquiolite" class="page">
+  <div class="top"><div><h1>Bronquiolite</h1><div class="sub">O que é, como reconhecer e como prevenir.</div></div></div>
+
+  <div class="card" style="border-top:4px solid var(--blue)">
+    <h2 style="margin-top:0">O que é</h2>
+    <p class="sub" style="font-size:14px;line-height:1.6">A bronquiolite é uma infecção respiratória que inflama e obstrui os bronquíolos — as menores vias aéreas dos pulmões. É mais comum em bebês e crianças até 2 anos, geralmente causada pelo vírus sincicial respiratório (VSR), e costuma ser mais frequente nos meses mais frios do ano.</p>
+  </div>
+
+  <div class="section two">
+    <div class="card" style="border-top:4px solid var(--yellow)">
+      <h2>Principais sintomas</h2>
+      <ul class="info-list">
+        <li>Tosse persistente e chiado no peito</li>
+        <li>Respiração rápida ou com esforço</li>
+        <li>Coriza e congestão nasal</li>
+        <li>Febre baixa</li>
+        <li>Irritabilidade e dificuldade para se alimentar</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:4px solid var(--red)">
+      <h2>Procure ajuda médica se houver</h2>
+      <ul class="info-list">
+        <li>Dificuldade intensa para respirar ou pausas na respiração</li>
+        <li>Lábios ou pele arroxeados/azulados</li>
+        <li>Recusa de líquidos ou sinais de desidratação</li>
+        <li>Febre alta persistente</li>
+        <li>Sonolência incomum ou muita irritabilidade</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section two">
+    <div class="card" style="border-top:4px solid var(--green)">
+      <h2>Como prevenir</h2>
+      <ul class="info-list">
+        <li>Lave as mãos com frequência, principalmente antes de cuidar do bebê</li>
+        <li>Evite contato com pessoas resfriadas ou gripadas</li>
+        <li>Não fume perto de crianças e mantenha ambientes ventilados</li>
+        <li>Mantenha a amamentação e a carteira de vacinação em dia</li>
+        <li>Evite ambientes muito fechados ou aglomerados na temporada de casos</li>
+        <li>Limpe brinquedos e superfícies com frequência</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:4px solid var(--blue)">
+      <h2>Grupos de maior risco</h2>
+      <ul class="info-list">
+        <li>Bebês prematuros ou com baixo peso ao nascer</li>
+        <li>Crianças com menos de 3 meses</li>
+        <li>Crianças com doenças cardíacas ou pulmonares prévias</li>
+        <li>Crianças com imunidade baixa</li>
+      </ul>
+      <p class="sub" style="font-size:12.5px;margin-top:14px">Este conteúdo é informativo e não substitui avaliação médica. Em caso de dúvida ou piora dos sintomas, procure um profissional de saúde.</p>
+    </div>
+  </div>
 </section>
 
 <section id="monitoramento" class="page">
@@ -373,6 +447,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <label>Frequência respiratória</label><input id="mresp" type="number" value="16" min="5" max="50">
 <button class="action" onclick="saveModal()">Salvar avaliação</button></div></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 function showPage(id,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -380,6 +455,9 @@ function showPage(id,btn){
   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='dashboard' && typeof spMap!=='undefined' && spMap){
+    setTimeout(function(){ spMap.invalidateSize(); },200);
+  }
 }
 function openModal(){document.getElementById('modal').classList.add('show')}
 function closeModal(){document.getElementById('modal').classList.remove('show')}
@@ -429,14 +507,16 @@ function toggleNationalMap(){
 // 0 caso = verde; de 1 até (VERMELHO-1) = amarelo; a partir de VERMELHO = vermelho.
 const ALERT_THRESHOLDS={ VERMELHO:15 };
 
-// Casos ativos simulados por zona de São Paulo. Trocar por dados reais quando houver backend.
+// Casos ativos simulados por zona de São Paulo, com centro aproximado (lat, lng)
+// usado no mapa. Trocar por dados reais quando houver backend.
 const SP_ZONES={
-  centro:{name:'Centro',casos:14},
-  norte:{name:'Zona Norte',casos:23},
-  sul:{name:'Zona Sul',casos:0},
-  leste:{name:'Zona Leste',casos:19},
-  oeste:{name:'Zona Oeste',casos:11}
+  centro:{name:'Centro',casos:14,coords:[-23.5505,-46.6333]},
+  norte:{name:'Zona Norte',casos:23,coords:[-23.4936,-46.6291]},
+  sul:{name:'Zona Sul',casos:0,coords:[-23.6398,-46.6396]},
+  leste:{name:'Zona Leste',casos:19,coords:[-23.5400,-46.4900]},
+  oeste:{name:'Zona Oeste',casos:11,coords:[-23.5620,-46.7211]}
 };
+const SP_CENTER=[-23.5505,-46.6333];
 
 function alertLevel(casos){
   if(casos<=0) return 0;
@@ -458,25 +538,147 @@ function zoneFromCep(cep){
   return null;
 }
 
-function renderSpZones(matchedKey){
-  const wrap=document.getElementById('spZones');
+function distDeg(lat,lng,lat2,lng2){
+  return Math.sqrt(Math.pow(lat-lat2,2)+Math.pow(lng-lng2,2));
+}
+
+function nearestZone(lat,lng){
+  let best=null,bestD=Infinity;
+  Object.keys(SP_ZONES).forEach(function(key){
+    const c=SP_ZONES[key].coords;
+    const d=distDeg(lat,lng,c[0],c[1]);
+    if(d<bestD){bestD=d;best=key;}
+  });
+  return best;
+}
+
+// Localiza o usuário em 3 níveis, do mais preciso ao mais aproximado:
+// 1) geolocalização real do navegador (pede permissão)
+// 2) geocodificação do endereço cadastrado (API pública Nominatim/OpenStreetMap)
+// 3) estimativa pelo prefixo do CEP (offline, sem depender de rede)
+function locateUser(user){
+  return new Promise(function(resolve){
+    function fallbackCep(){
+      const zoneKey=zoneFromCep(user.cep);
+      resolve({
+        lat:zoneKey?SP_ZONES[zoneKey].coords[0]:null,
+        lng:zoneKey?SP_ZONES[zoneKey].coords[1]:null,
+        zoneKey:zoneKey,
+        method:'cep'
+      });
+    }
+    function tryGeocode(){
+      const q=[user.endereco,user.numero,user.cidade,user.cep,'Brasil'].filter(Boolean).join(', ');
+      if(!q){ fallbackCep(); return; }
+      const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q='+encodeURIComponent(q);
+      fetch(url).then(function(r){return r.json()}).then(function(results){
+        if(results && results[0]){
+          const lat=parseFloat(results[0].lat), lng=parseFloat(results[0].lon);
+          if(distDeg(lat,lng,SP_CENTER[0],SP_CENTER[1])<0.9){
+            resolve({lat:lat,lng:lng,zoneKey:nearestZone(lat,lng),method:'endereco'});
+            return;
+          }
+        }
+        fallbackCep();
+      }).catch(fallbackCep);
+    }
+    if(navigator.geolocation){
+      let done=false;
+      const timer=setTimeout(function(){ if(!done){done=true; tryGeocode();} },4500);
+      navigator.geolocation.getCurrentPosition(function(pos){
+        if(done) return; done=true; clearTimeout(timer);
+        const lat=pos.coords.latitude, lng=pos.coords.longitude;
+        if(distDeg(lat,lng,SP_CENTER[0],SP_CENTER[1])<0.9){
+          resolve({lat:lat,lng:lng,zoneKey:nearestZone(lat,lng),method:'gps'});
+        } else {
+          tryGeocode();
+        }
+      }, function(){
+        if(done) return; done=true; clearTimeout(timer);
+        tryGeocode();
+      }, {timeout:4000,maximumAge:600000});
+    } else {
+      tryGeocode();
+    }
+  });
+}
+
+let spMap=null, spMapLayer=null;
+function initSpMap(){
+  if(spMap || typeof L==='undefined') return;
+  const el=document.getElementById('spMap');
+  if(!el) return;
+  spMap=L.map('spMap',{scrollWheelZoom:false}).setView(SP_CENTER,11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:18,
+    attribution:'&copy; OpenStreetMap contributors'
+  }).addTo(spMap);
+  spMapLayer=L.layerGroup().addTo(spMap);
+}
+
+function colorForLevel(lvl){
+  return lvl===0?'#37d39a':(lvl===1?'#ffc857':'#ff453d');
+}
+
+function renderSpMap(loc){
+  initSpMap();
+  if(!spMap) return;
+  spMapLayer.clearLayers();
+
+  Object.keys(SP_ZONES).forEach(function(key){
+    const z=SP_ZONES[key];
+    const lvl=alertLevel(z.casos);
+    L.circleMarker(z.coords,{
+      radius:16+z.casos/3,
+      color:'#04101f',
+      weight:1.5,
+      fillColor:colorForLevel(lvl),
+      fillOpacity:key===loc.zoneKey?0.95:0.7
+    }).bindPopup('<b>'+z.name+'</b><br>'+z.casos+' casos ativos').addTo(spMapLayer);
+  });
+
+  if(loc.lat!=null && loc.method!=='cep'){
+    L.marker([loc.lat,loc.lng],{
+      icon:L.divIcon({className:'user-pin',html:'<div class="user-pin-dot"></div>',iconSize:[22,22]})
+    }).bindPopup('Você está aqui').addTo(spMapLayer);
+    spMap.setView([loc.lat,loc.lng],13,{animate:false});
+  } else if(loc.zoneKey){
+    spMap.setView(SP_ZONES[loc.zoneKey].coords,12,{animate:false});
+  } else {
+    spMap.setView(SP_CENTER,11,{animate:false});
+  }
+  setTimeout(function(){ spMap.invalidateSize(); },150);
+}
+
+function renderSpChips(matchedKey){
+  const wrap=document.getElementById('spChips');
   if(!wrap) return;
   wrap.innerHTML='';
   Object.keys(SP_ZONES).forEach(function(key){
     const z=SP_ZONES[key];
     const lvl=alertLevel(z.casos);
-    const div=document.createElement('div');
-    div.className='sp-zone lvl'+lvl+(key===matchedKey?' here':'');
-    div.innerHTML='<span class="sp-zone-name">'+z.name+'</span><span class="sp-zone-casos">'+z.casos+' casos</span>'+(key===matchedKey?'<span class="sp-zone-pin">📍 você</span>':'');
-    wrap.appendChild(div);
+    const chip=document.createElement('div');
+    chip.className='sp-chip lvl'+lvl+(key===matchedKey?' here':'');
+    chip.innerHTML='<i></i><b>'+z.name+'</b><span class="casos">'+z.casos+' casos</span>'+(key===matchedKey?' 📍':'');
+    wrap.appendChild(chip);
   });
+}
 
+const LOCATE_LABELS={
+  gps:'📍 Localização atual detectada — você está na região: ',
+  endereco:'📍 Pelo endereço cadastrado, você está na região: ',
+  cep:'📍 Estimativa pelo CEP cadastrado — você está próximo da região: '
+};
+
+function renderLocation(loc){
+  renderSpChips(loc.zoneKey);
+  renderSpMap(loc);
   const locate=document.getElementById('spLocate');
   if(locate){
-    if(matchedKey){
-      locate.textContent='📍 Pelo seu endereço, você está na região: '+SP_ZONES[matchedKey].name+'.';
+    if(loc.zoneKey){
+      locate.textContent=LOCATE_LABELS[loc.method]+SP_ZONES[loc.zoneKey].name+'.';
     } else {
-      locate.textContent='Não foi possível localizar sua região a partir do CEP cadastrado — exibindo o panorama geral de São Paulo.';
+      locate.textContent='Não foi possível localizar sua região — exibindo o panorama geral de São Paulo.';
     }
   }
 }
@@ -527,9 +729,10 @@ function renderSpZones(matchedKey){
     document.getElementById('authScreen').style.display='none';
     document.querySelector('.app').style.display='flex';
     applyUserToUI(user);
-    const zoneKey=zoneFromCep(user.cep);
-    renderSpZones(zoneKey);
-    showAlertPopup(zoneKey);
+    locateUser(user).then(function(loc){
+      renderLocation(loc);
+      showAlertPopup(loc.zoneKey);
+    });
   }
 
   function showAuth(){
