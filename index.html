@@ -109,6 +109,22 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .mon-desc{color:var(--muted);font-size:12.5px;line-height:1.6;flex:1;min-width:200px}
 .mon-desc b{color:var(--text)}
 
+/* Gráficos: evolução e faixa etária */
+.chart-card-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:4px}
+.period-tabs{display:flex;gap:4px;background:#09182a;border-radius:10px;padding:4px;flex-wrap:wrap}
+.period-tab{background:transparent;border:0;color:var(--muted);padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.period-tab.active{background:linear-gradient(135deg,var(--brand-red),var(--brand-red2));color:#fff}
+.trend-note{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);margin:14px 0 4px;padding:8px 13px;border-radius:10px;background:#08172b;border:1px solid var(--line)}
+.trend-note b{font-size:14px;color:var(--text)}
+.trend-note.up b{color:var(--red)}
+.trend-note.down b{color:var(--green)}
+.trend-note.flat b{color:var(--yellow)}
+.chart-wrap{height:260px;position:relative;margin-top:10px}
+.age-summary{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.age-summary span{background:#08172b;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;color:var(--muted)}
+.age-summary span b{color:var(--text)}
+@media(max-width:560px){.chart-wrap{height:220px}.chart-card-head{flex-direction:column;align-items:stretch}}
+
 /* Mapa do Brasil por estado */
 .map-card{padding:22px}
 .map-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px;flex-wrap:wrap}
@@ -423,6 +439,30 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
     </div>
     <p class="sub" style="font-size:11.5px;margin-top:14px">Faixas de referência gerais para acompanhamento domiciliar — o profissional de saúde pode indicar valores diferentes conforme idade e histórico da criança.</p>
   </div>
+
+  <div class="section card">
+    <div class="chart-card-head">
+      <div>
+        <h2>📈 Evolução dos casos de bronquiolite</h2>
+        <div class="sub" style="font-size:13px">Registros ao longo do tempo · <span class="pill">Dados simulados</span></div>
+      </div>
+      <div class="period-tabs" id="evoTabs">
+        <button type="button" class="period-tab" data-period="7d">7 dias</button>
+        <button type="button" class="period-tab" data-period="30d">30 dias</button>
+        <button type="button" class="period-tab active" data-period="3m">3 meses</button>
+        <button type="button" class="period-tab" data-period="6m">6 meses</button>
+      </div>
+    </div>
+    <div class="trend-note" id="evoTrend"></div>
+    <div class="chart-wrap"><canvas id="evoChart"></canvas></div>
+  </div>
+
+  <div class="section card">
+    <h2>👶 Distribuição por faixa etária</h2>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Casos ativos registrados, por idade da criança.</div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ageChart"></canvas></div>
+    <div class="age-summary" id="ageSummary"></div>
+  </div>
 </section>
 
 <section id="avaliacao" class="page">
@@ -476,6 +516,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <button class="action" onclick="saveModal()">Salvar avaliação</button></div></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 function showPage(id,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -485,6 +526,13 @@ function showPage(id,btn){
   window.scrollTo({top:0,behavior:'smooth'});
   if(id==='dashboard' && typeof spMap!=='undefined' && spMap){
     setTimeout(function(){ spMap.invalidateSize(); },200);
+  }
+  if(id==='monitoramento'){
+    if(typeof evoChart!=='undefined' && !evoChart){
+      initCharts();
+    } else if(typeof evoChart!=='undefined' && evoChart){
+      setTimeout(function(){ evoChart.resize(); ageChart.resize(); },50);
+    }
   }
 }
 function openModal(){document.getElementById('modal').classList.add('show')}
@@ -534,6 +582,159 @@ function toggleNationalMap(){
 // o que conta como "alguns casos" (amarelo) e "muitos casos" (vermelho).
 // 0 caso = verde; de 1 até (VERMELHO-1) = amarelo; a partir de VERMELHO = vermelho.
 const ALERT_THRESHOLDS={ VERMELHO:15 };
+
+// ---- Gráficos de Monitoramento (dados simulados) ----
+const MONTHLY_CASOS=[118,165,245,312,288,214]; // 6 meses atrás → mês atual
+const WEEKLY_CASOS=[112,98,84,71];             // 4 semanas atrás → semana atual
+const DAILY_CASOS=[22,20,19,17,16,15,14];      // 7 dias atrás → hoje
+const AGE_DATA={
+  labels:['0–3 meses','4–6 meses','7–12 meses','1–2 anos','Acima de 2 anos'],
+  values:[89,76,54,31,12]
+};
+const MONTH_ABBR=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function monthLabelsBack(n){
+  const out=[], today=new Date();
+  for(let i=n-1;i>=0;i--){
+    const m=new Date(today.getFullYear(), today.getMonth()-i, 1);
+    out.push(MONTH_ABBR[m.getMonth()]);
+  }
+  return out;
+}
+function dayLabelsBack(n){
+  const out=[];
+  for(let i=n-1;i>=0;i--){
+    const d=new Date();
+    d.setDate(d.getDate()-i);
+    out.push(String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+  return out;
+}
+function weekLabelsBack(n){
+  const out=[];
+  for(let i=n-1;i>=0;i--){
+    out.push(i===0?'Esta semana':'Há '+i+' sem.');
+  }
+  return out;
+}
+
+const EVO_CONFIG={
+  '7d':{values:DAILY_CASOS, labels:function(){return dayLabelsBack(DAILY_CASOS.length);}},
+  '30d':{values:WEEKLY_CASOS, labels:function(){return weekLabelsBack(WEEKLY_CASOS.length);}},
+  '3m':{values:MONTHLY_CASOS.slice(-3), labels:function(){return monthLabelsBack(3);}},
+  '6m':{values:MONTHLY_CASOS, labels:function(){return monthLabelsBack(6);}}
+};
+
+// Aumento/redução/estabilidade: compara o primeiro e o último ponto do período.
+// Variação abaixo de 8% é tratada como estável.
+function trendInfo(values){
+  const first=values[0], last=values[values.length-1];
+  const diff=last-first;
+  const pct=first>0?Math.round((diff/first)*100):0;
+  if(Math.abs(pct)<8) return {dir:'flat',icon:'➡️',text:'Estável'};
+  if(diff>0) return {dir:'up',icon:'▲',text:'Aumento'};
+  return {dir:'down',icon:'▼',text:'Redução'};
+}
+
+let evoChart=null, ageChart=null;
+function initCharts(){
+  if(evoChart || typeof Chart==='undefined') return;
+  Chart.defaults.color='#91a4b9';
+  Chart.defaults.font.family="Inter, 'Segoe UI', Arial, sans-serif";
+  Chart.defaults.font.size=12;
+  const tooltipStyle={
+    backgroundColor:'#0c1b2e',titleColor:'#f5f8fc',bodyColor:'#f5f8fc',
+    borderColor:'#1c3652',borderWidth:1,padding:10,cornerRadius:10,displayColors:false
+  };
+
+  evoChart=new Chart(document.getElementById('evoChart'),{
+    type:'line',
+    data:{labels:[],datasets:[{
+      data:[],
+      borderColor:'#39b9ff',
+      backgroundColor:'rgba(57,185,255,.15)',
+      borderWidth:2,
+      pointRadius:3,
+      pointHoverRadius:6,
+      pointBackgroundColor:'#39b9ff',
+      pointBorderColor:'#04101f',
+      pointBorderWidth:2,
+      tension:.35,
+      fill:true
+    }]},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:Object.assign({},tooltipStyle,{callbacks:{label:function(ctx){return ctx.parsed.y+' casos ativos';}}})
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.06)'},ticks:{maxRotation:0}},
+        y:{grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true,ticks:{precision:0}}
+      }
+    }
+  });
+
+  ageChart=new Chart(document.getElementById('ageChart'),{
+    type:'bar',
+    data:{labels:AGE_DATA.labels,datasets:[{
+      data:AGE_DATA.values,
+      backgroundColor:'#39b9ff',
+      borderRadius:6,
+      maxBarThickness:38
+    }]},
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:Object.assign({},tooltipStyle,{callbacks:{label:function(ctx){return ctx.parsed.x+' casos ativos';}}})
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true,ticks:{precision:0}},
+        y:{grid:{display:false}}
+      }
+    }
+  });
+
+  const ageSummary=document.getElementById('ageSummary');
+  if(ageSummary){
+    ageSummary.innerHTML=AGE_DATA.labels.map(function(l,i){
+      return '<span><b>'+AGE_DATA.values[i]+'</b> '+l+'</span>';
+    }).join('');
+  }
+
+  document.getElementById('evoTabs').addEventListener('click',function(e){
+    const btn=e.target.closest('.period-tab');
+    if(!btn) return;
+    setEvoPeriod(btn.dataset.period);
+  });
+
+  setEvoPeriod('3m');
+}
+
+function setEvoPeriod(period){
+  const cfg=EVO_CONFIG[period];
+  if(!cfg || !evoChart) return;
+  evoChart.data.labels=cfg.labels();
+  evoChart.data.datasets[0].data=cfg.values;
+  evoChart.update();
+
+  const t=trendInfo(cfg.values);
+  const note=document.getElementById('evoTrend');
+  note.className='trend-note '+t.dir;
+  const first=cfg.values[0], last=cfg.values[cfg.values.length-1];
+  const pct=first>0?Math.round(((last-first)/first)*100):0;
+  const sign=pct>0?'+':'';
+  note.innerHTML=t.icon+' <b>'+t.text+'</b> de '+sign+pct+'% no período selecionado ('+first+' → '+last+' casos ativos).';
+
+  document.querySelectorAll('.period-tab').forEach(function(b){
+    b.classList.toggle('active', b.dataset.period===period);
+  });
+}
 
 // Casos ativos simulados por zona de São Paulo, com centro aproximado (lat, lng)
 // usado no mapa. Trocar por dados reais quando houver backend.
