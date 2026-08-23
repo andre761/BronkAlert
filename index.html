@@ -102,6 +102,13 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .info-list{margin:0;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.9}
 .info-list li{margin-bottom:2px}
 
+/* Legenda de cores do Monitoramento */
+.mon-legend{display:flex;flex-direction:column;gap:10px}
+.mon-row{display:flex;gap:16px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#08172b;flex-wrap:wrap}
+.mon-color{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;min-width:110px}
+.mon-desc{color:var(--muted);font-size:12.5px;line-height:1.6;flex:1;min-width:200px}
+.mon-desc b{color:var(--text)}
+
 /* Mapa do Brasil por estado */
 .map-card{padding:22px}
 .map-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px;flex-wrap:wrap}
@@ -125,7 +132,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .lvl-tag.lvl2{background:rgba(255,138,61,.18);color:var(--orange)}
 .lvl-tag.lvl3{background:rgba(255,69,61,.18);color:var(--red)}
 .map-legend{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);gap:22px;align-items:center}
-.map-legend .dot{width:12px;height:12px;border-radius:4px;display:inline-block;margin-right:7px;vertical-align:-1px}
+.dot{width:12px;height:12px;border-radius:4px;display:inline-block;margin-right:7px;vertical-align:-1px}
 .dot.lvl0{background:var(--green)}.dot.lvl1{background:var(--yellow)}.dot.lvl2{background:var(--orange)}.dot.lvl3{background:var(--red)}
 
 @media(max-width:900px){.sidebar{width:72px}.brand img{width:48px;object-fit:cover;object-position:left;height:48px}.nav button{font-size:0;text-align:center}.nav span{font-size:18px;margin:0}.sidebar .tag{display:none}.main{margin-left:72px;width:calc(100% - 72px);padding:20px}.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.quick{grid-template-columns:1fr}}
@@ -394,6 +401,27 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
   </div>
   <div class="section card"><h2>Central de acompanhamento</h2><p class="sub">Nesta demonstração, os valores são simulados e atualizados automaticamente para representar o comportamento de um aplicativo conectado a sensores.</p>
     <div class="progress"><i></i></div><div class="small" style="margin-top:8px">Qualidade do sinal: excelente · Última sincronização: agora</div>
+  </div>
+
+  <div class="section card">
+    <h2>🎨 Entenda as cores do monitoramento</h2>
+    <p class="sub" style="font-size:13px;margin-bottom:16px">O sensor conectado envia leituras de saturação, respiração e temperatura em tempo real. O sistema compara cada leitura com faixas de referência e classifica automaticamente com uma cor — assim dá pra saber de relance se é preciso agir.</p>
+
+    <div class="mon-legend">
+      <div class="mon-row">
+        <div class="mon-color lvl0"><i class="dot lvl0"></i>Normal</div>
+        <div class="mon-desc"><b>SpO₂:</b> 95% ou mais &nbsp;·&nbsp; <b>Temperatura:</b> 36,0° a 37,2° &nbsp;·&nbsp; <b>Respiração:</b> dentro da faixa esperada para a idade. Nenhuma ação necessária.</div>
+      </div>
+      <div class="mon-row">
+        <div class="mon-color lvl1"><i class="dot lvl1"></i>Atenção</div>
+        <div class="mon-desc"><b>SpO₂:</b> 90% a 94% &nbsp;·&nbsp; <b>Temperatura:</b> 37,3° a 38° &nbsp;·&nbsp; <b>Respiração:</b> levemente acima do esperado. Vale observar de perto e repetir a medição em pouco tempo.</div>
+      </div>
+      <div class="mon-row">
+        <div class="mon-color lvl3"><i class="dot lvl3"></i>Alerta</div>
+        <div class="mon-desc"><b>SpO₂:</b> abaixo de 90% &nbsp;·&nbsp; <b>Temperatura:</b> acima de 38° &nbsp;·&nbsp; <b>Respiração:</b> muito rápida ou com esforço visível (chiado, retração no peito). Procure atendimento médico.</div>
+      </div>
+    </div>
+    <p class="sub" style="font-size:11.5px;margin-top:14px">Faixas de referência gerais para acompanhamento domiciliar — o profissional de saúde pode indicar valores diferentes conforme idade e histórico da criança.</p>
   </div>
 </section>
 
