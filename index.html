@@ -58,20 +58,37 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .auth-note{color:var(--muted);font-size:11px;text-align:center;margin-top:16px;line-height:1.5}
 .auth-box label{font-size:12px;color:var(--muted);display:block;margin-bottom:2px}
 
-/* Boas-vindas */
-.welcome-box{max-width:440px;text-align:center}
-.welcome-logo{width:150px;height:auto;margin:0 auto 16px;display:block;border-radius:6px}
-.welcome-legend{justify-content:center;margin:18px 0}
+/* Pop-up de alerta (boas-vindas) */
+@keyframes alertPop{from{opacity:0;transform:scale(.86) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes alertFade{from{opacity:0}to{opacity:1}}
+.modal.show{animation:alertFade .2s ease}
+.alertbox{max-width:380px;width:100%;background:#fdfefe;color:#0d1b2e;border-radius:24px;padding:34px 28px 28px;text-align:center;box-shadow:0 30px 70px rgba(0,0,0,.45);border-top:8px solid var(--green);animation:alertPop .35s cubic-bezier(.34,1.56,.64,1)}
+.alert-icon{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;background:#e3faf3;color:var(--green)}
+.alert-eyebrow{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8592a3;margin-bottom:6px}
+.alertbox h2{font-size:22px;margin:0 0 4px;color:#0d1b2e}
+.alert-count{margin:10px 0}
+.alert-count span{font-size:46px;font-weight:900;line-height:1;color:var(--green)}
+.alert-count small{display:block;font-size:12.5px;font-weight:700;color:#5a6b7d;margin-top:4px}
+.alert-desc{color:#4b5a6b;font-size:13.5px;line-height:1.55;margin:2px 0 24px}
+.alertbox.lvl1{border-top-color:var(--yellow)}
+.alertbox.lvl1 .alert-icon{background:#fff6df;color:#b9860b}
+.alertbox.lvl1 .alert-count span{color:#b9860b}
+.alertbox.lvl3{border-top-color:var(--red)}
+.alertbox.lvl3 .alert-icon{background:#ffe8e6;color:var(--red)}
+.alertbox.lvl3 .alert-count span{color:var(--red)}
 
 /* Região monitorada: São Paulo */
+.sp-locate{background:#08172b;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px}
 .sp-zones{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:14px;margin:4px 0 18px}
-.sp-zone{aspect-ratio:1;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:10px;color:#04101f;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,.25);transition:transform .15s}
+.sp-zone{position:relative;aspect-ratio:1;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:10px;color:#04101f;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,.25);transition:transform .15s}
 .sp-zone:hover{transform:translateY(-3px)}
 .sp-zone.lvl0{background:var(--green)}
 .sp-zone.lvl1{background:var(--yellow)}
 .sp-zone.lvl3{background:var(--red);color:#fff}
 .sp-zone-name{font-size:14px}
 .sp-zone-casos{font-size:11px;font-weight:600;opacity:.85}
+.sp-zone.here{outline:3px solid #fff;outline-offset:2px;transform:translateY(-3px)}
+.sp-zone-pin{position:absolute;top:-10px;right:-8px;background:#fff;color:#0d1b2e;font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;box-shadow:0 4px 10px rgba(0,0,0,.35)}
 
 /* Mapa do Brasil por estado */
 .map-card{padding:22px}
@@ -119,30 +136,30 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
     </div>
 
     <form id="loginForm" class="auth-form active">
-      <label>Usuário</label>
-      <input id="loginUser" autocomplete="username" required>
+      <label>E-mail</label>
+      <input id="loginEmail" name="email" type="email" autocomplete="email">
       <label>Senha</label>
-      <input id="loginPass" type="password" autocomplete="current-password" required>
+      <input id="loginPass" name="password" type="password" autocomplete="current-password">
       <p class="auth-error" id="loginError"></p>
       <button class="action" style="width:100%" type="submit">Entrar</button>
     </form>
 
     <form id="cadastroForm" class="auth-form">
       <label>Nome completo</label>
-      <input id="regNome" required>
-      <label>Endereço</label>
-      <input id="regEndereco" required>
+      <input id="regNome" name="name">
+      <label>Endereço <small style="color:var(--red);font-weight:700">*</small></label>
+      <input id="regEndereco" name="street-address">
       <div class="auth-row">
-        <div><label>Número</label><input id="regNumero" required></div>
-        <div><label>CEP</label><input id="regCep" required></div>
+        <div><label>Número <small style="color:var(--red);font-weight:700">*</small></label><input id="regNumero" name="address-number"></div>
+        <div><label>CEP <small style="color:var(--red);font-weight:700">*</small></label><input id="regCep" name="postal-code"></div>
       </div>
-      <label>Cidade</label>
-      <input id="regCidade" required>
-      <label>Usuário</label>
-      <input id="regUser" autocomplete="username" required>
+      <label>Cidade <small style="color:var(--red);font-weight:700">*</small></label>
+      <input id="regCidade" name="address-level2">
+      <label>E-mail</label>
+      <input id="regEmail" name="new-email" type="email" autocomplete="email">
       <div class="auth-row">
-        <div><label>Senha</label><input id="regPass" type="password" autocomplete="new-password" required></div>
-        <div><label>Confirmar senha</label><input id="regPass2" type="password" autocomplete="new-password" required></div>
+        <div><label>Senha</label><input id="regPass" name="new-password" type="password" autocomplete="new-password"></div>
+        <div><label>Confirmar senha</label><input id="regPass2" name="new-password2" type="password" autocomplete="new-password"></div>
       </div>
       <p class="auth-error" id="regError"></p>
       <button class="action" style="width:100%" type="submit">Criar conta e entrar</button>
@@ -187,13 +204,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
         <span class="pill">Dados simulados</span>
       </div>
 
-      <div class="sp-zones">
-        <div class="sp-zone lvl1"><span class="sp-zone-name">Centro</span><span class="sp-zone-casos">14 casos</span></div>
-        <div class="sp-zone lvl3"><span class="sp-zone-name">Zona Norte</span><span class="sp-zone-casos">23 casos</span></div>
-        <div class="sp-zone lvl0"><span class="sp-zone-name">Zona Sul</span><span class="sp-zone-casos">8 casos</span></div>
-        <div class="sp-zone lvl3"><span class="sp-zone-name">Zona Leste</span><span class="sp-zone-casos">19 casos</span></div>
-        <div class="sp-zone lvl1"><span class="sp-zone-name">Zona Oeste</span><span class="sp-zone-casos">11 casos</span></div>
-      </div>
+      <div class="sp-locate" id="spLocate">Cadastre seu endereço para localizarmos sua zona.</div>
+
+      <div class="sp-zones" id="spZones"></div>
 
       <div class="legend map-legend">
         <span><i class="dot lvl0"></i>Baixo</span>
@@ -343,16 +356,15 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 </div>
 
 <div class="modal" id="welcomeModal">
-  <div class="modalbox welcome-box">
-    <img class="welcome-logo" src="logo.png" alt="BronqAlert">
-    <h2>Bem-vindo(a), <span id="welcomeName">Paciente</span>!</h2>
-    <p class="sub">Bem-vindo ao sistema de monitoramento da bronquiolite. Analise a legenda com base na sua região para saber como andam os casos.</p>
-    <div class="legend welcome-legend">
-      <span><i class="dot lvl0"></i>Baixo</span>
-      <span><i class="dot lvl1"></i>Moderado</span>
-      <span><i class="dot lvl3"></i>Alto</span>
+  <div class="alertbox" id="alertBox">
+    <div class="alert-icon" id="alertIcon">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 7 4-14 2 7h6"/></svg>
     </div>
-    <button class="action" style="width:100%" type="button" onclick="closeWelcome()">Entendi, ver meu painel</button>
+    <div class="alert-eyebrow">BronqAlert · <span id="alertScope">São Paulo</span></div>
+    <h2 id="alertTitle">Situação normal</h2>
+    <div class="alert-count"><span id="alertCount">0</span><small>casos ativos registrados</small></div>
+    <p class="alert-desc" id="alertDesc">Situação normal: nenhum caso de bronquiolite registrado.</p>
+    <button class="action" style="width:100%" type="button" onclick="closeWelcome()">Entendi</button>
   </div>
 </div>
 
@@ -412,30 +424,112 @@ function toggleNationalMap(){
   if(!showing) el.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+// Limites de casos configuráveis por nível de alerta — ajuste aqui para redefinir
+// o que conta como "alguns casos" (amarelo) e "muitos casos" (vermelho).
+// 0 caso = verde; de 1 até (VERMELHO-1) = amarelo; a partir de VERMELHO = vermelho.
+const ALERT_THRESHOLDS={ VERMELHO:15 };
+
+// Casos ativos simulados por zona de São Paulo. Trocar por dados reais quando houver backend.
+const SP_ZONES={
+  centro:{name:'Centro',casos:14},
+  norte:{name:'Zona Norte',casos:23},
+  sul:{name:'Zona Sul',casos:0},
+  leste:{name:'Zona Leste',casos:19},
+  oeste:{name:'Zona Oeste',casos:11}
+};
+
+function alertLevel(casos){
+  if(casos<=0) return 0;
+  if(casos<ALERT_THRESHOLDS.VERMELHO) return 1;
+  return 3;
+}
+
+// Heurística offline (sem geocodificação externa): usa o prefixo do CEP para
+// aproximar a zona da cidade de São Paulo. Cobre só a capital; fora disso retorna null.
+function zoneFromCep(cep){
+  const digits=(cep||'').replace(/\D/g,'');
+  if(digits.length<5) return null;
+  const p=parseInt(digits.slice(0,2),10);
+  if(p===1) return 'centro';
+  if(p===2) return 'norte';
+  if(p===3||p===8) return 'leste';
+  if(p===4) return 'sul';
+  if(p===5||p===6||p===7) return 'oeste';
+  return null;
+}
+
+function renderSpZones(matchedKey){
+  const wrap=document.getElementById('spZones');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  Object.keys(SP_ZONES).forEach(function(key){
+    const z=SP_ZONES[key];
+    const lvl=alertLevel(z.casos);
+    const div=document.createElement('div');
+    div.className='sp-zone lvl'+lvl+(key===matchedKey?' here':'');
+    div.innerHTML='<span class="sp-zone-name">'+z.name+'</span><span class="sp-zone-casos">'+z.casos+' casos</span>'+(key===matchedKey?'<span class="sp-zone-pin">📍 você</span>':'');
+    wrap.appendChild(div);
+  });
+
+  const locate=document.getElementById('spLocate');
+  if(locate){
+    if(matchedKey){
+      locate.textContent='📍 Pelo seu endereço, você está na região: '+SP_ZONES[matchedKey].name+'.';
+    } else {
+      locate.textContent='Não foi possível localizar sua região a partir do CEP cadastrado — exibindo o panorama geral de São Paulo.';
+    }
+  }
+}
+
 (function(){
-  const USERS_KEY='bronqalert_users';
-  const SESSION_KEY='bronqalert_session';
+  const USERS_KEY='bronqalert_users_v2';
+  const SESSION_KEY='bronqalert_session_v2';
+
+  // Esquema de cadastro mudou de usuário para e-mail: qualquer conta antiga
+  // (versão anterior do protótipo) é descartada.
+  localStorage.removeItem('bronqalert_users');
+  localStorage.removeItem('bronqalert_session');
 
   function getUsers(){
     try{ return JSON.parse(localStorage.getItem(USERS_KEY))||{}; }
     catch(e){ return {}; }
   }
   function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
+  function isValidEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
 
   function applyUserToUI(user){
-    const first = (user.nome||'Paciente').trim().split(' ')[0];
+    const first=(user.nome||'Paciente').trim().split(' ')[0];
     const el1=document.getElementById('greetName'); if(el1) el1.textContent=first;
     const el2=document.getElementById('greetAvatar'); if(el2) el2.textContent=first.charAt(0).toUpperCase();
     const el3=document.getElementById('perfilNome'); if(el3) el3.textContent=user.nome||'Paciente';
     const el4=document.getElementById('perfilEndereco'); if(el4) el4.textContent=(user.endereco||'')+', '+(user.numero||'')+' · '+(user.cidade||'')+' · CEP '+(user.cep||'');
-    const el5=document.getElementById('welcomeName'); if(el5) el5.textContent=first;
+  }
+
+  function showAlertPopup(zoneKey){
+    const zone=zoneKey?SP_ZONES[zoneKey]:null;
+    const casos=zone?zone.casos:Object.keys(SP_ZONES).reduce(function(sum,k){return sum+SP_ZONES[k].casos},0);
+    const lvl=alertLevel(casos);
+    const texts={
+      0:{title:'Situação normal',desc:'Situação normal: nenhum caso de bronquiolite registrado.'},
+      1:{title:'Atenção',desc:'Atenção: foram registrados alguns casos de bronquiolite.'},
+      3:{title:'Alerta',desc:'Alerta: alto número de casos registrados de bronquiolite.'}
+    };
+    const box=document.getElementById('alertBox');
+    box.className='alertbox lvl'+lvl;
+    document.getElementById('alertScope').textContent=zone?zone.name+', São Paulo':'São Paulo';
+    document.getElementById('alertTitle').textContent=texts[lvl].title;
+    document.getElementById('alertCount').textContent=casos;
+    document.getElementById('alertDesc').textContent=texts[lvl].desc+(zone?'':' Localização exata indisponível — exibindo o panorama da cidade.');
+    document.getElementById('welcomeModal').classList.add('show');
   }
 
   function showApp(user){
     document.getElementById('authScreen').style.display='none';
     document.querySelector('.app').style.display='flex';
     applyUserToUI(user);
-    document.getElementById('welcomeModal').classList.add('show');
+    const zoneKey=zoneFromCep(user.cep);
+    renderSpZones(zoneKey);
+    showAlertPopup(zoneKey);
   }
 
   function showAuth(){
@@ -464,17 +558,17 @@ function toggleNationalMap(){
 
   document.getElementById('loginForm').addEventListener('submit',function(e){
     e.preventDefault();
-    const u=document.getElementById('loginUser').value.trim();
+    const email=document.getElementById('loginEmail').value.trim().toLowerCase();
     const p=document.getElementById('loginPass').value;
     const err=document.getElementById('loginError');
     const users=getUsers();
-    if(!u || !users[u] || users[u].senha!==p){
-      err.textContent='Usuário ou senha incorretos.';
+    if(!email || !users[email] || users[email].senha!==p){
+      err.textContent='E-mail ou senha incorretos.';
       return;
     }
     err.textContent='';
-    localStorage.setItem(SESSION_KEY,u);
-    showApp(users[u]);
+    localStorage.setItem(SESSION_KEY,email);
+    showApp(users[email]);
   });
 
   document.getElementById('cadastroForm').addEventListener('submit',function(e){
@@ -484,29 +578,33 @@ function toggleNationalMap(){
     const numero=document.getElementById('regNumero').value.trim();
     const cidade=document.getElementById('regCidade').value.trim();
     const cep=document.getElementById('regCep').value.trim();
-    const user=document.getElementById('regUser').value.trim();
+    const email=document.getElementById('regEmail').value.trim().toLowerCase();
     const pass=document.getElementById('regPass').value;
     const pass2=document.getElementById('regPass2').value;
     const err=document.getElementById('regError');
     const users=getUsers();
 
-    if(!nome||!endereco||!numero||!cidade||!cep||!user||!pass||!pass2){
-      err.textContent='Preencha todos os campos.';
+    if(!nome||!endereco||!numero||!cidade||!cep||!email||!pass||!pass2){
+      err.textContent='Preencha todos os campos, incluindo endereço completo.';
+      return;
+    }
+    if(!isValidEmail(email)){
+      err.textContent='Informe um e-mail válido.';
       return;
     }
     if(pass!==pass2){
       err.textContent='As senhas não coincidem.';
       return;
     }
-    if(users[user]){
-      err.textContent='Esse usuário já existe. Escolha outro.';
+    if(users[email]){
+      err.textContent='Já existe uma conta com esse e-mail.';
       return;
     }
     err.textContent='';
-    users[user]={nome:nome,endereco:endereco,numero:numero,cidade:cidade,cep:cep,senha:pass};
+    users[email]={nome:nome,endereco:endereco,numero:numero,cidade:cidade,cep:cep,senha:pass};
     saveUsers(users);
-    localStorage.setItem(SESSION_KEY,user);
-    showApp(users[user]);
+    localStorage.setItem(SESSION_KEY,email);
+    showApp(users[email]);
   });
 
   const session=localStorage.getItem(SESSION_KEY);
