@@ -24,7 +24,7 @@ button{font:inherit}.app{display:none;min-height:100vh}
 .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;flex-wrap:wrap;gap:12px}
 h1{font-size:28px;margin:0 0 6px}.sub{color:var(--muted);font-size:14px}
 .user{display:flex;align-items:center;gap:12px}.avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--brand-red),#5276ff);display:grid;place-items:center;font-weight:800}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card{background:linear-gradient(145deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card{background:linear-gradient(145deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow);min-width:0}
 .metric{font-size:30px;font-weight:800;margin:7px 0}.label{color:var(--muted);font-size:13px}.status{font-size:12px;font-weight:700}.ok{color:var(--green)}.warn{color:var(--yellow)}.danger{color:var(--red)}
 .section{margin-top:20px}.section h2{font-size:18px;margin:0 0 12px}
 .two{display:grid;grid-template-columns:1.45fr .9fr;gap:18px}.chart{height:240px;position:relative;overflow:hidden}
@@ -42,7 +42,8 @@ h1{font-size:28px;margin:0 0 6px}.sub{color:var(--muted);font-size:14px}
 .close{float:right;border:0;background:none;color:#9eb0c2;font-size:22px;cursor:pointer}
 input,select{width:100%;background:#09182a;border:1px solid var(--line);color:#fff;border-radius:10px;padding:12px;margin:7px 0 14px}
 .progress{height:8px;background:#172d43;border-radius:20px;overflow:hidden}.progress i{display:block;height:100%;width:72%;background:linear-gradient(90deg,var(--blue),var(--green))}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:13px;border-bottom:1px solid var(--line)}th{color:var(--muted)}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:13px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted)}
 .live{display:inline-flex;align-items:center;gap:7px;color:var(--green);font-size:12px}.live i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
 
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#0c1b2e;border:1px solid var(--line);border-left:4px solid var(--green);color:#fff;padding:14px 22px;border-radius:12px;box-shadow:0 20px 45px rgba(0,0,0,.45);font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;z-index:60;max-width:90vw;text-align:center}
@@ -161,7 +162,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
   .map-summary{gap:14px}
   .brazil-svg{max-height:440px}
   .map-wrap{padding:8px}
-  .sp-map{height:300px}}
+  .sp-map{height:300px}
+  .mon-desc{min-width:0}
+  .mon-color{min-width:0}}
 @media(max-width:380px){.auth-row{grid-template-columns:1fr}.auth-box{padding:24px 18px}}
 </style>
 </head>
@@ -328,7 +331,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
   <div class="section two">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center"><div><h2>Monitoramento respiratório</h2><div class="live"><i></i> Atualização em tempo real</div></div><button class="action" onclick="openModal()">Nova avaliação</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px"><div><h2>Monitoramento respiratório</h2><div class="live"><i></i> Atualização em tempo real</div></div><button class="action" onclick="openModal()">Nova avaliação</button></div>
       <div class="chart">
         <svg viewBox="0 0 800 230" preserveAspectRatio="none">
           <defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#39b9ff" stop-opacity=".28"/><stop offset="1" stop-color="#39b9ff" stop-opacity="0"/></linearGradient></defs>
@@ -482,11 +485,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
 <section id="historico" class="page">
   <div class="top"><div><h1>Histórico</h1><div class="sub">Registros recentes do acompanhamento.</div></div></div>
-  <div class="card"><table><thead><tr><th>Data</th><th>SpO₂</th><th>Respiração</th><th>Temperatura</th><th>Status</th></tr></thead>
+  <div class="card"><div class="table-scroll"><table><thead><tr><th>Data</th><th>SpO₂</th><th>Respiração</th><th>Temperatura</th><th>Status</th></tr></thead>
   <tbody><tr><td>Hoje · 19:42</td><td>93%</td><td>19 irpm</td><td>36,8°</td><td class="warn">Atenção</td></tr>
   <tr><td>Hoje · 14:10</td><td>97%</td><td>16 irpm</td><td>36,6°</td><td class="ok">Normal</td></tr>
   <tr><td>Ontem · 21:03</td><td>98%</td><td>15 irpm</td><td>36,5°</td><td class="ok">Normal</td></tr>
-  <tr><td>Ontem · 08:15</td><td>97%</td><td>16 irpm</td><td>36,4°</td><td class="ok">Normal</td></tr></tbody></table></div>
+  <tr><td>Ontem · 08:15</td><td>97%</td><td>16 irpm</td><td>36,4°</td><td class="ok">Normal</td></tr></tbody></table></div></div>
 </section>
 
 <section id="perfil" class="page">
