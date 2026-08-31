@@ -1,0 +1,33 @@
+name: Atualizar dados reais (DATASUS/INMET)
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"  # toda segunda-feira às 09:00 UTC
+  workflow_dispatch: {}   # permite rodar manualmente pela aba Actions
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: pip install -r scripts/requirements.txt
+
+      - name: Buscar dados (DATASUS/CNES/INMET)
+        run: python scripts/fetch_data.py
+
+      - name: Commitar dados atualizados
+        run: |
+          git config user.name "bronqalert-bot"
+          git config user.email "actions@github.com"
+          git add data/gold/bronquiolite.json
+          git diff --cached --quiet && echo "Sem mudanças nos dados." || git commit -m "chore: atualizar dados reais (DATASUS/INMET)"
+          git push

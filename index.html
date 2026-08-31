@@ -133,7 +133,8 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 /* Mapa do Brasil por estado */
 .map-card{padding:22px}
 .map-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px;flex-wrap:wrap}
-.map-head .pill{background:rgba(216,56,40,.14);border:1px solid rgba(216,56,40,.35);color:#ff8b7c;font-size:11px;font-weight:700;padding:6px 12px;border-radius:999px;white-space:nowrap}
+.pill{background:rgba(216,56,40,.14);border:1px solid rgba(216,56,40,.35);color:#ff8b7c;font-size:11px;font-weight:700;padding:6px 12px;border-radius:999px;white-space:nowrap;display:inline-block}
+.pill.real{background:rgba(55,211,154,.14);border-color:rgba(55,211,154,.35);color:var(--green)}
 .map-summary{display:flex;gap:22px;flex-wrap:wrap;margin:2px 0 18px;font-size:13px;color:var(--muted)}
 .map-summary b{color:var(--text);font-size:15px}
 .map-wrap{position:relative;background:#050f1f;border:1px solid var(--line);border-radius:16px;padding:12px}
@@ -245,7 +246,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
           <h2>📍 Região monitorada: São Paulo</h2>
           <div class="sub">Nível de risco por zona da cidade · <span class="live"><i></i>Atualizado agora</span></div>
         </div>
-        <span class="pill">Dados simulados</span>
+        <span class="pill" id="spDataPill">Dados simulados</span>
       </div>
 
       <div class="sp-locate" id="spLocate">Cadastre seu endereço para localizarmos sua zona.</div>
@@ -451,7 +452,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
     <div class="chart-card-head">
       <div>
         <h2>📈 Evolução dos casos de bronquiolite</h2>
-        <div class="sub" style="font-size:13px">Registros ao longo do tempo · <span class="pill">Dados simulados</span></div>
+        <div class="sub" style="font-size:13px">Registros ao longo do tempo · <span class="pill" id="evoDataPill">Dados simulados</span></div>
       </div>
       <div class="period-tabs" id="evoTabs">
         <button type="button" class="period-tab" data-period="7d">7 dias</button>
@@ -466,7 +467,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 
   <div class="section card">
     <h2>👶 Distribuição por faixa etária</h2>
-    <div class="sub" style="font-size:13px;margin-bottom:6px">Casos ativos registrados, por idade da criança.</div>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Casos ativos registrados, por idade da criança · <span class="pill" id="ageDataPill">Dados simulados</span></div>
     <div class="chart-wrap" style="height:260px"><canvas id="ageChart"></canvas></div>
     <div class="age-summary" id="ageSummary"></div>
   </div>
@@ -765,6 +766,79 @@ const SP_ZONES={
 };
 const SP_CENTER=[-23.5505,-46.6333];
 
+// Carrega dados reais (DATASUS/CNES/INMET), gerados pela automação do GitHub Actions
+// em data/gold/bronquiolite.json. Se o arquivo não existir ou a busca real tiver
+// falhado (used_fallback), os números simulados acima continuam valendo — o site
+// nunca fica sem dado por causa de uma fonte externa fora do ar.
+let REAL_DATA=null;
+async function loadRealData(){
+  let d=null;
+  // 1ª opção: dados em tempo real, direto do Oracle Autonomous Database (Netlify Function).
+  try{
+    const res=await fetch('/.netlify/functions/oracle-data',{cache:'no-store'});
+    if(res.ok) d=await res.json();
+  }catch(e){ /* segue para a próxima opção */ }
+
+  // 2ª opção: último snapshot gerado pela automação do GitHub Actions (DATASUS/INMET).
+  if(!d){
+    try{
+      const res=await fetch('data/gold/bronquiolite.json',{cache:'no-store'});
+      if(res.ok) d=await res.json();
+    }catch(e){ /* segue com os dados simulados já carregados por padrão */ }
+  }
+
+  if(!d) return;
+  try{
+    REAL_DATA=d;
+
+    if(Array.isArray(d.monthly_casos) && d.monthly_casos.length===MONTHLY_CASOS.length && d.monthly_casos.every(function(v){return typeof v==='number';})){
+      MONTHLY_CASOS.splice(0,MONTHLY_CASOS.length,...d.monthly_casos);
+    }
+    if(d.age_data && Array.isArray(d.age_data.values) && d.age_data.values.length===AGE_DATA.values.length){
+      AGE_DATA.values=d.age_data.values;
+    }
+    if(d.sp_zones){
+      Object.keys(SP_ZONES).forEach(function(k){
+        if(d.sp_zones[k] && typeof d.sp_zones[k].casos==='number'){
+          SP_ZONES[k].casos=d.sp_zones[k].casos;
+        }
+      });
+    }
+
+    if(!d.used_fallback){
+      const label=(d.source||'').toLowerCase().includes('oracle')?'Dados reais (Oracle Cloud)':'Dados reais (DATASUS)';
+      ['spDataPill','evoDataPill','ageDataPill'].forEach(function(id){
+        const el=document.getElementById(id);
+        if(el){
+          el.textContent=label;
+          el.classList.add('real');
+          el.title='Fonte: '+d.source+' · atualizado em '+d.generated_at;
+        }
+      });
+    }
+
+    // Caso os gráficos/mapa já tenham sido desenhados antes desta busca terminar, atualiza de novo.
+    if(typeof evoChart!=='undefined' && evoChart){
+      const activeBtn=document.querySelector('.period-tab.active');
+      setEvoPeriod(activeBtn?activeBtn.dataset.period:'3m');
+    }
+    if(typeof ageChart!=='undefined' && ageChart){
+      ageChart.data.datasets[0].data=AGE_DATA.values;
+      ageChart.update();
+      const ageSummary=document.getElementById('ageSummary');
+      if(ageSummary){
+        ageSummary.innerHTML=AGE_DATA.labels.map(function(l,i){return '<span><b>'+AGE_DATA.values[i]+'</b> '+l+'</span>';}).join('');
+      }
+    }
+    if(window.__lastLoc){
+      renderLocation(window.__lastLoc);
+    }
+  }catch(e){
+    console.warn('Dados reais indisponíveis, mantendo dados simulados.',e);
+  }
+}
+loadRealData();
+
 function alertLevel(casos){
   if(casos<=0) return 0;
   if(casos<ALERT_THRESHOLDS.VERMELHO) return 1;
@@ -918,6 +992,7 @@ const LOCATE_LABELS={
 };
 
 function renderLocation(loc){
+  window.__lastLoc=loc;
   renderSpChips(loc.zoneKey);
   renderSpMap(loc);
   const locate=document.getElementById('spLocate');
