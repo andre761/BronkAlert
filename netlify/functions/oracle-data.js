@@ -1,28 +1,36 @@
 // BronqAlert — Netlify Function: consulta em tempo real o Oracle Autonomous Database
 // (schema FIAP_OCI_GOLD) e devolve o mesmo formato de JSON que o site já espera.
 //
-// Credenciais e o wallet vêm SEMPRE de variáveis de ambiente do Netlify — nunca ficam
-// no código/repositório. Configure em: Netlify → Site configuration → Environment variables
+// Credenciais vêm de variáveis de ambiente do Netlify — nunca ficam no código/repositório.
+// Configure em: Netlify → Site configuration → Environment variables
 //
-//   ORACLE_DB_USER          = gold_bka
-//   ORACLE_DB_PASSWORD      = (senha do banco)
-//   ORACLE_DSN              = bronkalertdb_high
-//   ORACLE_WALLET_PASSWORD  = (senha do wallet, se houver)
-//   ORACLE_WALLET_B64_1..N  = o arquivo .zip do wallet, em base64, dividido em pedaços
-//                             de até 5000 caracteres (limite do painel do Netlify por
-//                             variável) — ORACLE_WALLET_B64_1, _2, _3... na ordem certa.
+//   ORACLE_DB_USER          = gold_bka                    (escopo: Functions/Runtime)
+//   ORACLE_DB_PASSWORD      = (senha do banco)             (escopo: Functions/Runtime)
+//   ORACLE_DSN              = bronkalertdb_high            (escopo: Functions/Runtime)
+//   ORACLE_WALLET_PASSWORD  = (senha do wallet, se houver) (escopo: Functions/Runtime)
+//   ORACLE_WALLET_B64_1..N  = wallet .zip em base64,       (escopo: Builds — NÃO marcar
+//                             dividido em pedaços de até    Functions/Runtime, senão
+//                             5000 caracteres               estoura o limite de 4KB do
+//                                                            AWS Lambda)
 //
-// Se qualquer coisa falhar (banco fora do ar, variável não configurada, etc.), a função
-// devolve os dados simulados de reserva — o site nunca fica sem número nenhum.
+// O wallet em si NÃO é lido de variável de ambiente em tempo de execução (o AWS Lambda,
+// que roda as Netlify Functions, limita o total de env vars da função a 4KB — bem menos
+// que um wallet inteiro). Em vez disso, scripts/prepare-wallet.js roda durante o BUILD
+// do Netlify, decodifica o wallet uma única vez e grava os arquivos aqui do lado
+// (netlify/functions/oracle-data-wallet/), que é empacotado junto da função via
+// "included_files" no netlify.toml. Esta função só lê esse arquivo já pronto.
+//
+// Se qualquer coisa falhar (banco fora do ar, wallet ainda não configurado, etc.), a
+// função devolve os dados simulados de reserva — o site nunca fica sem número nenhum.
 
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 const oracledb = require("oracledb");
-const AdmZip = require("adm-zip");
 
 // Modo Thin (padrão do driver) não precisa de Oracle Instant Client — funciona
 // direto no ambiente serverless do Netlify, inclusive com wallet/mTLS.
+
+const WALLET_DIR = path.join(__dirname, "oracle-data-wallet");
 
 const FALLBACK = {
   monthly_casos: [118, 165, 245, 312, 288, 214],
@@ -37,37 +45,14 @@ const FALLBACK = {
   },
 };
 
-let walletDirCache = null;
-
-// O painel do Netlify limita cada variável a 5000 caracteres, e o wallet em base64
-// passa disso — por isso ele é dividido em partes (ORACLE_WALLET_B64_1, _2, _3, ...)
-// e remontado aqui. Vá até onde houver variável definida (para de procurar na primeira
-// que não existir).
-function readWalletB64() {
-  let combined = "";
-  for (let i = 1; i <= 10; i++) {
-    const part = process.env[`ORACLE_WALLET_B64_${i}`];
-    if (!part) break;
-    combined += part;
-  }
-  if (!combined) combined = process.env.ORACLE_WALLET_B64 || ""; // fallback: variável única (wallets pequenos)
-  return combined;
-}
-
 function ensureWallet() {
-  if (walletDirCache) return walletDirCache;
-  const b64 = readWalletB64();
-  if (!b64) throw new Error("ORACLE_WALLET_B64_1 (ou ORACLE_WALLET_B64) não configurado");
-
-  const dir = path.join(os.tmpdir(), "bronqalert-wallet");
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  const zipPath = path.join(os.tmpdir(), "wallet.zip");
-  fs.writeFileSync(zipPath, Buffer.from(b64, "base64"));
-  new AdmZip(zipPath).extractAllTo(dir, true);
-
-  walletDirCache = dir;
-  return dir;
+  if (!fs.existsSync(WALLET_DIR) || fs.readdirSync(WALLET_DIR).length === 0) {
+    throw new Error(
+      "Wallet não encontrado em " + WALLET_DIR + " — configure ORACLE_WALLET_B64_1..N " +
+        "(escopo Builds) e rode um novo deploy para o scripts/prepare-wallet.js gerá-lo."
+    );
+  }
+  return WALLET_DIR;
 }
 
 async function getConnection() {
