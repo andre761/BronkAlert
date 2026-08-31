@@ -4,12 +4,13 @@
 // Credenciais e o wallet vêm SEMPRE de variáveis de ambiente do Netlify — nunca ficam
 // no código/repositório. Configure em: Netlify → Site configuration → Environment variables
 //
-//   ORACLE_DB_USER        = gold_bka
-//   ORACLE_DB_PASSWORD    = (senha do banco)
-//   ORACLE_DSN            = bronkalertdb_high
-//   ORACLE_WALLET_PASSWORD = (senha do wallet, se houver)
-//   ORACLE_WALLET_B64     = (o arquivo .zip do wallet, em base64 — veja o comando
-//                            no README de como gerar isso a partir do .zip)
+//   ORACLE_DB_USER          = gold_bka
+//   ORACLE_DB_PASSWORD      = (senha do banco)
+//   ORACLE_DSN              = bronkalertdb_high
+//   ORACLE_WALLET_PASSWORD  = (senha do wallet, se houver)
+//   ORACLE_WALLET_B64_1..N  = o arquivo .zip do wallet, em base64, dividido em pedaços
+//                             de até 5000 caracteres (limite do painel do Netlify por
+//                             variável) — ORACLE_WALLET_B64_1, _2, _3... na ordem certa.
 //
 // Se qualquer coisa falhar (banco fora do ar, variável não configurada, etc.), a função
 // devolve os dados simulados de reserva — o site nunca fica sem número nenhum.
@@ -38,10 +39,25 @@ const FALLBACK = {
 
 let walletDirCache = null;
 
+// O painel do Netlify limita cada variável a 5000 caracteres, e o wallet em base64
+// passa disso — por isso ele é dividido em partes (ORACLE_WALLET_B64_1, _2, _3, ...)
+// e remontado aqui. Vá até onde houver variável definida (para de procurar na primeira
+// que não existir).
+function readWalletB64() {
+  let combined = "";
+  for (let i = 1; i <= 10; i++) {
+    const part = process.env[`ORACLE_WALLET_B64_${i}`];
+    if (!part) break;
+    combined += part;
+  }
+  if (!combined) combined = process.env.ORACLE_WALLET_B64 || ""; // fallback: variável única (wallets pequenos)
+  return combined;
+}
+
 function ensureWallet() {
   if (walletDirCache) return walletDirCache;
-  const b64 = process.env.ORACLE_WALLET_B64;
-  if (!b64) throw new Error("ORACLE_WALLET_B64 não configurado");
+  const b64 = readWalletB64();
+  if (!b64) throw new Error("ORACLE_WALLET_B64_1 (ou ORACLE_WALLET_B64) não configurado");
 
   const dir = path.join(os.tmpdir(), "bronqalert-wallet");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
