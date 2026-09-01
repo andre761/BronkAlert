@@ -122,6 +122,11 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 .sp-map-attr a{color:var(--muted)}
 .user-pin-dot{width:16px;height:16px;border-radius:50%;background:var(--blue);border:3px solid #fff;box-shadow:0 0 0 4px rgba(57,185,255,.35);animation:pinPulse 1.8s ease-in-out infinite}
 @keyframes pinPulse{0%,100%{box-shadow:0 0 0 4px rgba(57,185,255,.35)}50%{box-shadow:0 0 0 9px rgba(57,185,255,.12)}}
+.hosp-pin{width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;border:2px solid #04101f;animation:hospPulse 2.4s ease-out infinite}
+.hosp-pin.lvl0{background:var(--green)}
+.hosp-pin.lvl1{background:var(--yellow)}
+.hosp-pin.lvl3{background:var(--red)}
+@keyframes hospPulse{0%{box-shadow:0 0 0 0 rgba(255,69,61,.45)}70%{box-shadow:0 0 0 14px rgba(255,69,61,0)}100%{box-shadow:0 0 0 0 rgba(255,69,61,0)}}
 .sp-chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 18px}
 .sp-chip{display:flex;align-items:center;gap:7px;background:#08172b;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px}
 .sp-chip.here{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
@@ -250,7 +255,6 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
     <button id="navBronquiolite" onclick="showPage('bronquiolite',this)"><span>🫁</span>Bronquiolite</button>
     <button id="navDashboard" onclick="showPage('dashboard',this)"><span>⌂</span>Dashboard</button>
     <button id="navAvaliacao" onclick="showPage('avaliacao',this)"><span>✚</span>Avaliação</button>
-    <button id="navHistorico" onclick="showPage('historico',this)"><span>▤</span>Histórico</button>
     <button id="navPerfil" onclick="showPage('perfil',this)"><span>⚙</span>Perfil</button>
   </nav>
   <div class="tag">Protótipo demonstrativo<br>Dados simulados</div>
@@ -289,7 +293,9 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
         <span><i class="dot lvl0"></i>Baixo</span>
         <span><i class="dot lvl1"></i>Moderado</span>
         <span><i class="dot lvl3"></i>Alto</span>
+        <span>🏥 Hospitais com internações por bronquiolite</span>
       </div>
+      <div class="sub" style="font-size:12px;margin-top:2px">Hospitais no mapa · <span class="pill" id="hospDataPill">Dados simulados</span></div>
 
       <button class="action" style="margin-top:16px" type="button" id="toggleMapBtn" onclick="toggleNationalMap()">Ver mapa do Brasil completo</button>
     </div>
@@ -382,7 +388,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 
   <div class="section"><h2>Ações rápidas</h2><div class="quick">
     <div class="card" onclick="openModal()"><div class="icon">🫁</div><b>Fazer avaliação</b><div class="small">Registrar sintomas e sinais.</div></div>
-    <div class="card" onclick="showPage('historico',document.getElementById('navHistorico'))"><div class="icon">📊</div><b>Ver histórico</b><div class="small">Acompanhar evolução.</div></div>
+    <div class="card" onclick="showPage('monitoramento',document.getElementById('navMonitoramento'))"><div class="icon">📊</div><b>Ver evolução</b><div class="small">Acompanhar os casos ao longo do tempo.</div></div>
     <div class="card" onclick="showToast('Fluxo demonstrativo: em uma versão real, esta ação acionaria o protocolo configurado.')"><div class="icon">🚨</div><b>Protocolo de alerta</b><div class="small">Consultar orientação de emergência.</div></div>
     <div class="card" onclick="showPage('bronquiolite',document.getElementById('navBronquiolite'))"><div class="icon">📖</div><b>Sobre a bronquiolite</b><div class="small">Sintomas, prevenção e cuidados.</div></div>
   </div></div>
@@ -488,6 +494,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
         <button type="button" class="period-tab" data-period="30d">30 dias</button>
         <button type="button" class="period-tab active" data-period="3m">3 meses</button>
         <button type="button" class="period-tab" data-period="6m">6 meses</button>
+        <button type="button" class="period-tab" data-period="ano">Ano</button>
       </div>
     </div>
     <div class="trend-note" id="evoTrend"></div>
@@ -496,7 +503,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 
   <div class="section card">
     <h2>👶 Distribuição por faixa etária</h2>
-    <div class="sub" style="font-size:13px;margin-bottom:6px">Casos ativos registrados, por idade da criança · <span class="pill" id="ageDataPill">Dados simulados</span></div>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Casos ativos registrados, por idade da criança · <span class="pill" id="ageDataPill">Dados simulados</span> <span class="small" id="agePeriod" style="color:var(--muted)"></span></div>
     <div class="chart-wrap" style="height:260px"><canvas id="ageChart"></canvas></div>
     <div class="age-summary" id="ageSummary"></div>
   </div>
@@ -511,15 +518,6 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
     <label>Observações</label><input placeholder="Descreva outros sintomas ou observações">
     <button class="action" onclick="saveAssessment()">Registrar avaliação</button>
   </div>
-</section>
-
-<section id="historico" class="page">
-  <div class="top"><div><h1>Histórico</h1><div class="sub">Registros recentes do acompanhamento.</div></div></div>
-  <div class="card"><div class="table-scroll"><table><thead><tr><th>Data</th><th>SpO₂</th><th>Respiração</th><th>Temperatura</th><th>Status</th></tr></thead>
-  <tbody><tr><td>Hoje · 19:42</td><td>93%</td><td>19 irpm</td><td>36,8°</td><td class="warn">Atenção</td></tr>
-  <tr><td>Hoje · 14:10</td><td>97%</td><td>16 irpm</td><td>36,6°</td><td class="ok">Normal</td></tr>
-  <tr><td>Ontem · 21:03</td><td>98%</td><td>15 irpm</td><td>36,5°</td><td class="ok">Normal</td></tr>
-  <tr><td>Ontem · 08:15</td><td>97%</td><td>16 irpm</td><td>36,4°</td><td class="ok">Normal</td></tr></tbody></table></div></div>
 </section>
 
 <section id="perfil" class="page">
@@ -824,7 +822,7 @@ let REAL_ALERT=null;
 const STATUS_ALERTA_MAP={NORMAL:0,ATENCAO:1,MODERADO:1,ALERTA:3,ALTO:3,CRITICO:3};
 
 // ---- Gráficos de Monitoramento (dados simulados) ----
-const MONTHLY_CASOS=[118,165,245,312,288,214]; // 6 meses atrás → mês atual
+const MONTHLY_CASOS=[96,110,158,210,265,312,288,245,198,165,132,108]; // jan → dez (ano simulado)
 // Quando dados reais chegam (loadRealData), os rótulos passam a ser os meses de
 // verdade do banco (podem não bater com "hoje", já que o Gold real tem um recorte
 // fixo de datas) — até lá, ficam null e usamos os meses calculados a partir de hoje.
@@ -874,8 +872,12 @@ const EVO_CONFIG={
     labels:function(){return MONTHLY_LABELS?MONTHLY_LABELS.slice(-3):monthLabelsBack(3);}
   },
   '6m':{
-    values:function(){return MONTHLY_CASOS;},
+    values:function(){return MONTHLY_CASOS.slice(-6);},
     labels:function(){return MONTHLY_LABELS?MONTHLY_LABELS.slice(-6):monthLabelsBack(6);}
+  },
+  'ano':{
+    values:function(){return MONTHLY_CASOS;},
+    labels:function(){return MONTHLY_LABELS||monthLabelsBack(MONTHLY_CASOS.length);}
   }
 };
 
@@ -914,7 +916,8 @@ function initCharts(){
       pointBorderColor:'#04101f',
       pointBorderWidth:2,
       tension:.35,
-      fill:true
+      fill:true,
+      spanGaps:false
     }]},
     options:{
       responsive:true,
@@ -1002,6 +1005,22 @@ const SP_ZONES={
 };
 const SP_CENTER=[-23.5505,-46.6333];
 
+// Hospitais de São Paulo com atendimento pediátrico exibidos no mapa. Nomes e
+// localizações são reais (informação pública); o número de internações por
+// bronquiolite é simulado/ilustrativo até a exportação (scripts/export_gold_to_json.py)
+// trazer os valores reais da VW_HOSPITAL_DESEMPENHO — quando o snapshot trouxer
+// "hospitals", esta lista é substituída por completo (ver loadRealData).
+let HOSPITALS=[
+  {name:'Hospital das Clínicas (FMUSP)',bairro:'Cerqueira César',casos:22,coords:[-23.5558,-46.6696]},
+  {name:'Santa Casa de São Paulo',bairro:'Santa Cecília',casos:17,coords:[-23.5389,-46.6427]},
+  {name:'Hospital Israelita Albert Einstein',bairro:'Morumbi',casos:9,coords:[-23.5997,-46.7156]},
+  {name:'Hospital Sírio-Libanês',bairro:'Bela Vista',casos:6,coords:[-23.5597,-46.6528]},
+  {name:'Hospital São Paulo (UNIFESP)',bairro:'Vila Clementino',casos:14,coords:[-23.5978,-46.6427]},
+  {name:'Hospital Municipal Infantil Menino Jesus',bairro:'Vila Buarque',casos:12,coords:[-23.5445,-46.6478]},
+  {name:'Hospital e Maternidade Santa Joana',bairro:'Paraíso',casos:8,coords:[-23.5717,-46.6560]},
+  {name:'Hospital Infantil Darcy Vargas',bairro:'Planalto Paulista',casos:11,coords:[-23.6055,-46.6473]}
+];
+
 // Carrega dados reais (DATASUS/CNES/INMET), gerados pela automação do GitHub Actions
 // em data/gold/bronquiolite.json. Se o arquivo não existir ou a busca real tiver
 // falhado (used_fallback), os números simulados acima continuam valendo — o site
@@ -1023,7 +1042,11 @@ async function loadRealData(){
   try{
     REAL_DATA=d;
 
-    if(Array.isArray(d.monthly_casos) && d.monthly_casos.length===MONTHLY_CASOS.length && d.monthly_casos.every(function(v){return typeof v==='number';})){
+    // Aceita de 1 a 12 meses (o ano pode chegar incompleto — algum mês sem
+    // dado vira null e o gráfico simplesmente mostra um vão ali, em vez de
+    // inventar um número) — assim o snapshot pode crescer até o ano
+    // completo conforme mais exportações forem rodadas.
+    if(Array.isArray(d.monthly_casos) && d.monthly_casos.length>=1 && d.monthly_casos.length<=12 && d.monthly_casos.every(function(v){return v===null || typeof v==='number';})){
       MONTHLY_CASOS.splice(0,MONTHLY_CASOS.length,...d.monthly_casos);
       if(Array.isArray(d.monthly_labels) && d.monthly_labels.length===MONTHLY_CASOS.length){
         MONTHLY_LABELS=d.monthly_labels.slice();
@@ -1031,6 +1054,8 @@ async function loadRealData(){
     }
     if(d.age_data && Array.isArray(d.age_data.values) && d.age_data.values.length===AGE_DATA.values.length){
       AGE_DATA.values=d.age_data.values;
+      const ageEl=document.getElementById('agePeriod');
+      if(ageEl) ageEl.textContent=d.age_data.period_label?('· dados de '+d.age_data.period_label):'';
       if(Array.isArray(d.age_data.labels) && d.age_data.labels.length===AGE_DATA.labels.length){
         AGE_DATA.labels=d.age_data.labels;
       }
@@ -1053,6 +1078,13 @@ async function loadRealData(){
           SP_ZONES[k].casos=d.sp_zones[k].casos;
         }
       });
+    }
+    let hospitalsReal=false;
+    if(Array.isArray(d.hospitals) && d.hospitals.length>0 && d.hospitals.every(function(h){
+      return h && typeof h.name==='string' && typeof h.lat==='number' && typeof h.lng==='number' && typeof h.casos==='number';
+    })){
+      HOSPITALS=d.hospitals.map(function(h){return {name:h.name,bairro:h.bairro||'',casos:h.casos,coords:[h.lat,h.lng]};});
+      hospitalsReal=true;
     }
     if(d.alert_status && typeof d.alert_casos==='number'){
       REAL_ALERT={status:String(d.alert_status).toUpperCase(),casos:d.alert_casos};
@@ -1077,6 +1109,9 @@ async function loadRealData(){
       if(d.alert_status && typeof d.alert_casos==='number'){
         markReal('spDataPill');
       }
+      if(hospitalsReal){
+        markReal('hospDataPill');
+      }
     }
 
     // Caso os gráficos/mapa já tenham sido desenhados antes desta busca terminar, atualiza de novo.
@@ -1085,6 +1120,7 @@ async function loadRealData(){
       setEvoPeriod(activeBtn?activeBtn.dataset.period:'3m');
     }
     if(typeof ageChart!=='undefined' && ageChart){
+      ageChart.data.labels=AGE_DATA.labels;
       ageChart.data.datasets[0].data=AGE_DATA.values;
       ageChart.update();
       const ageSummary=document.getElementById('ageSummary');
@@ -1218,6 +1254,13 @@ function renderSpMap(loc){
       fillColor:colorForLevel(lvl),
       fillOpacity:key===loc.zoneKey?0.95:0.7
     }).bindPopup('<b>'+z.name+'</b><br>'+z.casos+' casos ativos').addTo(spMapLayer);
+  });
+
+  HOSPITALS.forEach(function(h){
+    const lvl=alertLevel(h.casos);
+    L.marker(h.coords,{
+      icon:L.divIcon({className:'hosp-marker-wrap',html:'<div class="hosp-pin lvl'+lvl+'">🏥</div>',iconSize:[18,18]})
+    }).bindPopup('<b>🏥 '+h.name+'</b><br>'+h.bairro+'<br>'+h.casos+' internações por bronquiolite').addTo(spMapLayer);
   });
 
   if(loc.lat!=null && loc.method!=='cep'){

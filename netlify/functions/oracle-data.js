@@ -100,10 +100,12 @@ async function getConnection() {
 }
 
 async function fetchMonthly(connection) {
+  // Até 12 meses (o ano todo) — meses ausentes na consulta simplesmente não
+  // aparecem no array em vez de virarem um número inventado.
   const r = await connection.execute(
     `SELECT mes, qt_internacoes FROM vw_comparativo_diagnostico_mensal
       WHERE categoria_diagnostico = 'Bronquiolite (J21)'
-      ORDER BY mes DESC FETCH FIRST 6 ROWS ONLY`
+      ORDER BY mes DESC FETCH FIRST 12 ROWS ONLY`
   );
   const rows = r.rows.reverse();
   if (!rows.length) throw new Error("sem linhas");
@@ -119,7 +121,10 @@ async function fetchDaily(connection) {
   );
   const rows = r.rows.reverse();
   if (!rows.length) throw new Error("sem linhas");
-  return rows.map(([, v]) => Number(v));
+  return {
+    labels: rows.map(([d]) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`),
+    values: rows.map(([, v]) => Number(v)),
+  };
 }
 
 async function fetchWeekly(connection) {
@@ -128,23 +133,81 @@ async function fetchWeekly(connection) {
   );
   const rows = r.rows.reverse();
   if (!rows.length) throw new Error("sem linhas");
-  return rows.map(([, v]) => Number(v));
+  return {
+    labels: rows.map(([d]) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`),
+    values: rows.map(([, v]) => Number(v)),
+  };
 }
 
 async function fetchAge(connection) {
+  // Soma o período inteiro disponível na view (não só o mês mais recente) —
+  // uma distribuição por faixa etária baseada no ano todo é mais
+  // representativa do que um único mês, que pode ser atípico.
   const r = await connection.execute(
-    `SELECT faixa_etaria, SUM(qt_internacoes)
-       FROM vw_perfil_paciente_mensal
-      WHERE mes_ref = (
-        SELECT mes_ref FROM vw_perfil_paciente_mensal
-        ORDER BY TO_DATE(mes_ref,'MM/YYYY') DESC FETCH FIRST 1 ROW ONLY
-      )
-      GROUP BY faixa_etaria`
+    `SELECT faixa_etaria, SUM(qt_internacoes) FROM vw_perfil_paciente_mensal GROUP BY faixa_etaria`
   );
   const byLabel = Object.fromEntries(r.rows.map(([label, total]) => [label, Number(total)]));
   const values = FALLBACK.age_labels.map((l) => byLabel[l] || 0);
   if (!values.some((v) => v > 0)) throw new Error("faixas zeradas");
-  return { labels: FALLBACK.age_labels, values };
+
+  const rp = await connection.execute(
+    `SELECT MIN(TO_DATE(mes_ref,'MM/YYYY')), MAX(TO_DATE(mes_ref,'MM/YYYY')) FROM vw_perfil_paciente_mensal`
+  );
+  const [ini, fim] = rp.rows[0] || [null, null];
+  let periodLabel = null;
+  if (ini && fim) {
+    const fmt = (d) => `${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+    periodLabel = fmt(ini) === fmt(fim) ? fmt(ini) : `${fmt(ini)} a ${fmt(fim)}`;
+  }
+  return { labels: FALLBACK.age_labels, values, periodLabel };
+}
+
+// Zona de cada bairro -> centro aproximado (mesmas coordenadas do mapa do
+// site) — só pra posicionar hospitais sem endereço geocodificado.
+const ZONE_COORDS = {
+  centro: [-23.5505, -46.6333],
+  norte: [-23.4936, -46.6291],
+  sul: [-23.6398, -46.6396],
+  leste: [-23.5400, -46.4900],
+  oeste: [-23.5620, -46.7211],
+};
+
+// Deslocamento pequeno e determinístico (mesmo hospital sempre cai no mesmo
+// ponto) só pra não empilhar vários hospitais do mesmo bairro exatamente um
+// em cima do outro no mapa — não é a coordenada real do endereço.
+function jitter(seedText, spread = 0.025) {
+  let h = 0;
+  for (let i = 0; i < seedText.length; i++) h = (h * 31 + seedText.charCodeAt(i)) >>> 0;
+  const dx = ((h % 1000) / 1000 - 0.5) * 2 * spread;
+  const dy = (((Math.floor(h / 1000)) % 1000) / 1000 - 0.5) * 2 * spread;
+  return [dx, dy];
+}
+
+async function fetchHospitals(connection) {
+  const r = await connection.execute(
+    `SELECT no_fantasia, no_bairro, qt_internacoes, pct_bronquiolite
+       FROM vw_hospital_desempenho
+      WHERE qt_internacoes > 0 AND pct_bronquiolite IS NOT NULL
+      ORDER BY qt_internacoes DESC FETCH FIRST 12 ROWS ONLY`
+  );
+  if (!r.rows.length) throw new Error("sem linhas");
+  const hospitals = [];
+  for (const [nome, bairro, qt, pct] of r.rows) {
+    const key = stripAccents(String(bairro || "").trim().toLowerCase());
+    const zona = BAIRRO_ZONA[key];
+    if (!zona) continue;
+    const [baseLat, baseLng] = ZONE_COORDS[zona];
+    const [dx, dy] = jitter(String(nome));
+    hospitals.push({
+      name: String(nome).trim(),
+      bairro: String(bairro).trim(),
+      casos: Math.round(Number(qt) * (Number(pct) / 100)),
+      lat: baseLat + dx,
+      lng: baseLng + dy,
+    });
+  }
+  if (!hospitals.length) throw new Error("nenhum bairro reconhecido");
+  return hospitals;
 }
 
 async function fetchAlert(connection) {
@@ -190,9 +253,11 @@ exports.handler = async function () {
     source: "dados simulados (Oracle indisponível)",
     monthly_labels: null,
     monthly_casos: FALLBACK.monthly_casos,
+    daily_labels: null,
     daily_casos: FALLBACK.daily_casos,
+    weekly_labels: null,
     weekly_casos: FALLBACK.weekly_casos,
-    age_data: { labels: FALLBACK.age_labels, values: FALLBACK.age_values },
+    age_data: { labels: FALLBACK.age_labels, values: FALLBACK.age_values, period_label: null },
     sp_zones: FALLBACK.sp_zones,
     alert_status: null,
     alert_casos: null,
@@ -210,11 +275,12 @@ exports.handler = async function () {
         fetchAge(connection),
         fetchAlert(connection),
         fetchZones(connection),
+        fetchHospitals(connection),
       ]),
       15000,
       "consultas ao Oracle"
     );
-    const [monthly, daily, weekly, age, alert, zones] = outcomes;
+    const [monthly, daily, weekly, age, alert, zones, hospitals] = outcomes;
 
     if (monthly.status === "fulfilled") {
       result.monthly_labels = monthly.value.labels;
@@ -228,14 +294,19 @@ exports.handler = async function () {
       });
       console.warn("[oracle-data] evolução mensal falhou:", monthly.reason?.message);
     }
-    if (daily.status === "fulfilled") result.daily_casos = daily.value;
-    else console.warn("[oracle-data] diário falhou:", daily.reason?.message);
+    if (daily.status === "fulfilled") {
+      result.daily_labels = daily.value.labels;
+      result.daily_casos = daily.value.values;
+    } else console.warn("[oracle-data] diário falhou:", daily.reason?.message);
 
-    if (weekly.status === "fulfilled") result.weekly_casos = weekly.value;
-    else console.warn("[oracle-data] semanal falhou:", weekly.reason?.message);
+    if (weekly.status === "fulfilled") {
+      result.weekly_labels = weekly.value.labels;
+      result.weekly_casos = weekly.value.values;
+    } else console.warn("[oracle-data] semanal falhou:", weekly.reason?.message);
 
-    if (age.status === "fulfilled") result.age_data = age.value;
-    else console.warn("[oracle-data] faixa etária falhou:", age.reason?.message);
+    if (age.status === "fulfilled") {
+      result.age_data = { labels: age.value.labels, values: age.value.values, period_label: age.value.periodLabel };
+    } else console.warn("[oracle-data] faixa etária falhou:", age.reason?.message);
 
     if (alert.status === "fulfilled") {
       result.alert_status = alert.value.status;
@@ -244,6 +315,9 @@ exports.handler = async function () {
 
     if (zones.status === "fulfilled") result.sp_zones = zones.value;
     else console.warn("[oracle-data] zonas falharam:", zones.reason?.message);
+
+    if (hospitals.status === "fulfilled") result.hospitals = hospitals.value;
+    else console.warn("[oracle-data] hospitais falharam:", hospitals.reason?.message);
   } catch (e) {
     console.error("[oracle-data] conexão falhou, devolvendo tudo simulado:", e.message);
     result.source = "dados simulados (Oracle indisponível: " + e.message + ")";

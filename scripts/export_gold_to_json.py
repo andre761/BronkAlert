@@ -19,6 +19,7 @@ import sys
 import tempfile
 import unicodedata
 import zipfile
+import zlib
 from datetime import date
 from pathlib import Path
 
@@ -72,6 +73,28 @@ BAIRRO_ZONA = {
 
 STATUS_MAP = {"NORMAL": 0, "ATENCAO": 1, "MODERADO": 1, "ALERTA": 3, "ALTO": 3, "CRITICO": 3}
 
+# Centro aproximado de cada zona (mesmas coordenadas usadas no mapa do site) —
+# usado só pra posicionar hospitais sem endereço geocodificado.
+ZONE_COORDS = {
+    "centro": (-23.5505, -46.6333),
+    "norte": (-23.4936, -46.6291),
+    "sul": (-23.6398, -46.6396),
+    "leste": (-23.5400, -46.4900),
+    "oeste": (-23.5620, -46.7211),
+}
+
+
+def _jitter(seed_text, spread=0.025):
+    """Pequeno deslocamento determinístico (mesmo hospital sempre cai no mesmo
+    ponto) só pra não empilhar vários hospitais do mesmo bairro exatamente um
+    em cima do outro no mapa. Não é a coordenada real do endereço — é uma
+    aproximação dentro da zona da cidade (mesmo nível de precisão já usado
+    para as zonas de SP)."""
+    h = zlib.crc32(seed_text.encode("utf-8"))
+    dx = ((h % 1000) / 1000.0 - 0.5) * 2 * spread
+    dy = (((h // 1000) % 1000) / 1000.0 - 0.5) * 2 * spread
+    return dx, dy
+
 
 def strip_accents(s):
     return "".join(c for c in unicodedata.normalize("NFD", s or "") if unicodedata.category(c) != "Mn")
@@ -111,11 +134,15 @@ def safe(label, fn):
 
 
 def fetch_monthly(cur):
+    # Até 12 meses (o ano todo) — se algum mês não vier na consulta, o site
+    # simplesmente mostra um vão ali no gráfico de "Ano" em vez de inventar
+    # um número; os períodos de 3/6 meses continuam pegando só os últimos
+    # meses reais (a ponta mais recente costuma vir completa).
     cur.execute(
         """
         SELECT mes, qt_internacoes FROM vw_comparativo_diagnostico_mensal
         WHERE categoria_diagnostico = 'Bronquiolite (J21)'
-        ORDER BY mes DESC FETCH FIRST 6 ROWS ONLY
+        ORDER BY mes DESC FETCH FIRST 12 ROWS ONLY
         """
     )
     rows = list(reversed(cur.fetchall()))
@@ -129,7 +156,9 @@ def fetch_daily(cur):
     rows = list(reversed(cur.fetchall()))
     if not rows:
         raise ValueError("sem linhas")
-    return [int(v) for _, v in rows]
+    # Datas reais junto do valor — sem isso o site mostraria o número real
+    # sob uma data calculada "a partir de hoje", o que seria enganoso.
+    return [f"{d.day:02d}/{d.month:02d}/{d.year}" for d, _ in rows], [int(v) for _, v in rows]
 
 
 def fetch_weekly(cur):
@@ -137,18 +166,17 @@ def fetch_weekly(cur):
     rows = list(reversed(cur.fetchall()))
     if not rows:
         raise ValueError("sem linhas")
-    return [int(v) for _, v in rows]
+    return [f"{d.day:02d}/{d.month:02d}/{d.year}" for d, _ in rows], [int(v) for _, v in rows]
 
 
 def fetch_age(cur):
+    # Soma TODOS os meses disponíveis na view (não só o mais recente) — uma
+    # distribuição por faixa etária baseada no ano inteiro é mais
+    # representativa do que um único mês, que pode ser atípico.
     cur.execute(
         """
         SELECT faixa_etaria, SUM(qt_internacoes)
         FROM vw_perfil_paciente_mensal
-        WHERE mes_ref = (
-            SELECT mes_ref FROM vw_perfil_paciente_mensal
-            ORDER BY TO_DATE(mes_ref,'MM/YYYY') DESC FETCH FIRST 1 ROW ONLY
-        )
         GROUP BY faixa_etaria
         """
     )
@@ -157,7 +185,54 @@ def fetch_age(cur):
     values = [by_label.get(l, 0) for l in labels]
     if sum(values) == 0:
         raise ValueError("todas as faixas vieram zeradas")
-    return labels, values
+
+    cur.execute(
+        """
+        SELECT MIN(TO_DATE(mes_ref,'MM/YYYY')), MAX(TO_DATE(mes_ref,'MM/YYYY'))
+        FROM vw_perfil_paciente_mensal
+        """
+    )
+    ini, fim = cur.fetchone() or (None, None)
+    period_label = None
+    if ini and fim:
+        ini_txt, fim_txt = f"{ini.month:02d}/{ini.year}", f"{fim.month:02d}/{fim.year}"
+        period_label = ini_txt if ini_txt == fim_txt else f"{ini_txt} a {fim_txt}"
+    return labels, values, period_label
+
+
+def fetch_hospitals(cur):
+    # Só hospitais com internação e percentual de bronquiolite conhecidos —
+    # ordenado por volume, os postos/clínicas pequenas com tudo zerado (a
+    # maioria dos registros do CNES) ficam de fora naturalmente.
+    cur.execute(
+        """
+        SELECT no_fantasia, no_bairro, qt_internacoes, pct_bronquiolite
+        FROM vw_hospital_desempenho
+        WHERE qt_internacoes > 0 AND pct_bronquiolite IS NOT NULL
+        ORDER BY qt_internacoes DESC
+        FETCH FIRST 12 ROWS ONLY
+        """
+    )
+    rows = cur.fetchall()
+    if not rows:
+        raise ValueError("sem linhas")
+    hospitals = []
+    for nome, bairro, qt, pct in rows:
+        zona = BAIRRO_ZONA.get(strip_accents((bairro or "").strip().lower()))
+        if not zona:
+            continue
+        base_lat, base_lng = ZONE_COORDS[zona]
+        dx, dy = _jitter(str(nome))
+        hospitals.append({
+            "name": str(nome).strip(),
+            "bairro": str(bairro).strip().title(),
+            "casos": round(float(qt) * float(pct) / 100.0),
+            "lat": base_lat + dx,
+            "lng": base_lng + dy,
+        })
+    if not hospitals:
+        raise ValueError("nenhum bairro reconhecido")
+    return hospitals
 
 
 def fetch_alert(cur):
@@ -208,6 +283,7 @@ def main():
     age = safe("faixa etária (VW_PERFIL_PACIENTE_MENSAL)", lambda: fetch_age(cur))
     alert = safe("status de alerta (VW_ALERTA_RISCO_SEMANAL)", lambda: fetch_alert(cur))
     zones = safe("zonas de SP (VW_HOSPITAL_DESEMPENHO)", lambda: fetch_zones(cur))
+    hospitals = safe("hospitais de SP (VW_HOSPITAL_DESEMPENHO)", lambda: fetch_hospitals(cur))
 
     cur.close()
     connection.close()
@@ -215,7 +291,9 @@ def main():
     monthly_labels, monthly_casos = monthly if monthly else (
         [f"{i:02d}/2026" for i in range(3, 9)], FALLBACK["monthly_casos"]
     )
-    age_labels, age_values = age if age else (FALLBACK["age_labels"], FALLBACK["age_values"])
+    daily_labels, daily_casos = daily if daily else (None, FALLBACK["daily_casos"])
+    weekly_labels, weekly_casos = weekly if weekly else (None, FALLBACK["weekly_casos"])
+    age_labels, age_values, age_period = age if age else (FALLBACK["age_labels"], FALLBACK["age_values"], None)
     alert_status, alert_casos = alert if alert else (None, None)
 
     dataset = {
@@ -223,14 +301,18 @@ def main():
         "source": "Oracle Autonomous Database (FIAP_OCI_GOLD) — exportado manualmente",
         "monthly_labels": monthly_labels,
         "monthly_casos": monthly_casos,
-        "daily_casos": daily or FALLBACK["daily_casos"],
-        "weekly_casos": weekly or FALLBACK["weekly_casos"],
-        "age_data": {"labels": age_labels, "values": age_values},
+        "daily_labels": daily_labels,
+        "daily_casos": daily_casos,
+        "weekly_labels": weekly_labels,
+        "weekly_casos": weekly_casos,
+        "age_data": {"labels": age_labels, "values": age_values, "period_label": age_period},
         "sp_zones": zones or FALLBACK["sp_zones"],
         "alert_status": alert_status,
         "alert_casos": alert_casos,
         "used_fallback": monthly is None,
     }
+    if hospitals:
+        dataset["hospitals"] = hospitals
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUT_PATH.write_text(json.dumps(dataset, ensure_ascii=False, indent=2), encoding="utf-8")

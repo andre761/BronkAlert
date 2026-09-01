@@ -1,15 +1,16 @@
 {
   "generated_at": "2026-09-01",
   "source": "Oracle Autonomous Database (FIAP_OCI_GOLD) — leitura manual das views, sem conexão em tempo real",
-  "monthly_labels": ["07/2025", "08/2025", "09/2025", "10/2025", "11/2025", "12/2025"],
-  "monthly_casos": [2215, 1773, 1723, 1863, 1388, 711],
+  "monthly_labels": ["01/2025", "02/2025", "03/2025", "04/2025", "07/2025", "08/2025", "09/2025", "10/2025", "11/2025", "12/2025"],
+  "monthly_casos": [721, 1007, 2301, 4162, 2215, 1773, 1723, 1863, 1388, 711],
   "daily_labels": ["02/01/2025", "03/01/2025", "04/01/2025", "05/01/2025", "06/01/2025", "07/01/2025", "08/01/2025"],
   "daily_casos": [44, 31, 23, 28, 29, 30, 22],
   "weekly_labels": ["30/06/2025", "11/08/2025", "25/08/2025", "15/09/2025"],
   "weekly_casos": [672, 436, 366, 423],
   "age_data": {
     "labels": ["Menor de 1 ano", "1 a 2 anos", "Maior de 2 anos"],
-    "values": [549, 115, 57]
+    "values": [549, 115, 57],
+    "period_label": "01/2025"
   },
   "used_fallback": false
 }
