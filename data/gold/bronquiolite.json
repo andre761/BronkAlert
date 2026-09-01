@@ -51,10 +51,11 @@
   },
 
   "patient_profile": {
-    "labels": ["Menor de 1 ano", "1 a 2 anos", "Maior de 2 anos", "Não informado"],
-    "masculino": [73533, 27065, 1217930, 402],
-    "feminino": [61053, 21261, 1548106, 1050],
-    "note": "VW_PERFIL_PACIENTE é o perfil geral de pacientes (todas as internações do período, não específico de bronquiolite) — por isso os números são bem maiores que os de bronquiolite."
+    "labels": ["Menor de 1 ano", "1 a 2 anos", "Maior de 2 anos"],
+    "masculino": [317, 56, 25],
+    "feminino": [232, 59, 32],
+    "period_label": "01/2025",
+    "note": "Casos de bronquiolite por faixa etária e sexo (VW_PERFIL_PACIENTE_MENSAL, 01/2025) — mesma fonte e mesmo mês de age_data, só aberta por sexo; cada faixa soma exatamente com age_data.values (masculino+feminino = 549/115/57)."
   },
 
   "cost_share": {

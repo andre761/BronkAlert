@@ -577,7 +577,10 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 
   <div class="section card">
     <h2>🧒 Perfil de paciente — faixa etária × sexo</h2>
-    <div class="sub" style="font-size:13px;margin-bottom:6px">Todas as internações do período (não específico de bronquiolite) · <span class="pill" id="profileDataPill">Dados simulados</span></div>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Casos de bronquiolite por faixa etária e sexo · <span class="pill" id="profileDataPill">Dados simulados</span> <span class="small" id="profilePeriod" style="color:var(--muted)"></span></div>
+    <div class="sub" style="font-size:12px;margin-bottom:2px">Filtrar por mês (o mesmo filtro do mapa e da faixa etária):</div>
+    <div class="month-filter" id="monthFilterProfile"></div>
+    <div class="filter-summary" id="filterSummaryProfile"></div>
     <div class="chart-wrap"><canvas id="profileChart"></canvas></div>
   </div>
 
@@ -1401,6 +1404,8 @@ function captureFilterBase(){
   Object.keys(SP_ZONES).forEach(function(k){ SP_ZONES_BASE[k]={casos:SP_ZONES[k].casos}; });
   HOSPITALS_BASE=HOSPITALS.map(function(h){ return {casos:h.casos}; });
   AGE_DATA_BASE={values:AGE_DATA.values.slice()};
+  PROFILE_MASC_BASE=PROFILE_MASC.slice();
+  PROFILE_FEM_BASE=PROFILE_FEM.slice();
   BAIRRO_CONCENTRATION_BASE=BAIRRO_CONCENTRATION.map(function(b){ return b.casos; });
   HOSPITAL_RANKING_SHARE_BASE=HOSPITAL_RANKING.map(function(h){ return h.internacoes*h.pctBronq/100; });
 }
@@ -1483,6 +1488,17 @@ function applyMonthFilter(){
   if(AGE_DATA_BASE){
     AGE_DATA.values=scaleToTotal(AGE_DATA_BASE.values,periodTotal);
   }
+  if(PROFILE_MASC_BASE && PROFILE_FEM_BASE){
+    // Escala Masculino e Feminino juntos (um array só, intercalado) pra
+    // garantir que a soma das duas séries também bata com o total do
+    // período — mesma lógica da faixa etária, já que é a mesma fonte real
+    // (VW_PERFIL_PACIENTE_MENSAL de 01/2025) só aberta por sexo.
+    const combinedBase=[];
+    for(let i=0;i<PROFILE_MASC_BASE.length;i++){ combinedBase.push(PROFILE_MASC_BASE[i],PROFILE_FEM_BASE[i]); }
+    const scaledProfile=scaleToTotal(combinedBase,periodTotal);
+    PROFILE_MASC=[]; PROFILE_FEM=[];
+    for(let i=0;i<PROFILE_MASC_BASE.length;i++){ PROFILE_MASC.push(scaledProfile[i*2]); PROFILE_FEM.push(scaledProfile[i*2+1]); }
+  }
   if(BAIRRO_CONCENTRATION_BASE){
     const scaled=scaleToTotal(BAIRRO_CONCENTRATION_BASE,periodTotal);
     BAIRRO_CONCENTRATION.forEach(function(b,i){ b.casos=scaled[i]; });
@@ -1501,6 +1517,11 @@ function applyMonthFilter(){
     ageChart.data.datasets[0].data=AGE_DATA.values;
     ageChart.update();
     updateAgeSummary();
+  }
+  if(typeof profileChart!=='undefined' && profileChart){
+    profileChart.data.datasets[0].data=PROFILE_MASC;
+    profileChart.data.datasets[1].data=PROFILE_FEM;
+    profileChart.update();
   }
   if(typeof bairroChart!=='undefined' && bairroChart){
     bairroChart.data.labels=BAIRRO_CONCENTRATION.map(function(b){return b.bairro;});
@@ -1523,7 +1544,7 @@ function renderMonthFilterUI(){
     const active=MONTH_FILTER.has(l);
     return '<button type="button" class="month-chip'+(active?' active':'')+'" data-month="'+l.replace(/"/g,'')+'">'+monthChipLabel(l)+'</button>';
   }).join('');
-  ['monthFilterMap','monthFilterAge','monthFilterHosp','monthFilterBairro'].forEach(function(id){
+  ['monthFilterMap','monthFilterAge','monthFilterHosp','monthFilterBairro','monthFilterProfile'].forEach(function(id){
     const el=document.getElementById(id);
     if(el) el.innerHTML=html;
   });
@@ -1531,14 +1552,14 @@ function renderMonthFilterUI(){
   const pct=Math.round(selectedFraction()*100);
   const summary=allSelected
     ? 'Mostrando o período completo disponível ('+total+' casos de bronquiolite).'
-    : '🔎 <b>'+total+' casos</b> nos meses marcados ('+pct+'% do total do período) — a faixa etária, o ranking de hospitais e a concentração por bairro somam exatamente esse total (estimativa proporcional, não um valor direto do banco por mês); as zonas do mapa continuam simuladas e só encolhem/crescem na mesma proporção, sem prometer bater com esse número.';
-  ['filterSummaryMap','filterSummaryAge','filterSummaryHosp','filterSummaryBairro'].forEach(function(id){
+    : '🔎 <b>'+total+' casos</b> nos meses marcados ('+pct+'% do total do período) — a faixa etária, o perfil por sexo, o ranking de hospitais e a concentração por bairro somam exatamente esse total (estimativa proporcional, não um valor direto do banco por mês); as zonas do mapa continuam simuladas e só encolhem/crescem na mesma proporção, sem prometer bater com esse número.';
+  ['filterSummaryMap','filterSummaryAge','filterSummaryHosp','filterSummaryBairro','filterSummaryProfile'].forEach(function(id){
     const el=document.getElementById(id);
     if(el) el.innerHTML=summary;
   });
 }
 function initMonthFilterHandlers(){
-  ['monthFilterMap','monthFilterAge','monthFilterHosp','monthFilterBairro'].forEach(function(id){
+  ['monthFilterMap','monthFilterAge','monthFilterHosp','monthFilterBairro','monthFilterProfile'].forEach(function(id){
     const el=document.getElementById(id);
     if(!el || el.dataset.bound) return;
     el.dataset.bound='1';
@@ -1581,9 +1602,13 @@ let DIAG_BRONQ=[500,600,900,1200,1000,700];
 let DIAG_RESP=[15000,16000,17000,18000,17500,16500];
 let DIAG_OUTRAS=[210000,212000,215000,213000,214000,211000];
 
-const PROFILE_LABELS=['Menor de 1 ano','1 a 2 anos','Maior de 2 anos','Não informado'];
-let PROFILE_MASC=[300,150,900,5];
-let PROFILE_FEM=[280,140,950,4];
+// Mesmas 3 faixas e o mesmo período de AGE_DATA (é a mesma consulta de
+// origem — VW_PERFIL_PACIENTE_MENSAL — só que aberta por sexo em vez de só
+// somada). "Masculino"+"Feminino" de cada faixa bate com AGE_DATA.values.
+let PROFILE_LABELS=['Menor de 1 ano','1 a 2 anos','Maior de 2 anos'];
+let PROFILE_MASC=[300,60,15];
+let PROFILE_FEM=[280,55,12];
+let PROFILE_MASC_BASE=null, PROFILE_FEM_BASE=null;
 
 let COST_LABELS=null; // usa WEEKLY_LABELS quando disponível (mesmas 4 semanas)
 let COST_PCT=[0.9,0.8,0.7,0.75]; // % do custo total atribuído à bronquiolite
@@ -1748,11 +1773,14 @@ async function loadRealData(){
     }
 
     let profileReal=false;
-    if(d.patient_profile && Array.isArray(d.patient_profile.labels) && d.patient_profile.labels.length>0
-       && Array.isArray(d.patient_profile.masculino) && d.patient_profile.masculino.length===d.patient_profile.labels.length
-       && Array.isArray(d.patient_profile.feminino) && d.patient_profile.feminino.length===d.patient_profile.labels.length){
+    if(d.patient_profile && Array.isArray(d.patient_profile.labels) && d.patient_profile.labels.length===PROFILE_LABELS.length
+       && Array.isArray(d.patient_profile.masculino) && d.patient_profile.masculino.length===PROFILE_LABELS.length
+       && Array.isArray(d.patient_profile.feminino) && d.patient_profile.feminino.length===PROFILE_LABELS.length){
+      PROFILE_LABELS=d.patient_profile.labels;
       PROFILE_MASC=d.patient_profile.masculino;
       PROFILE_FEM=d.patient_profile.feminino;
+      const profileEl=document.getElementById('profilePeriod');
+      if(profileEl) profileEl.textContent=d.patient_profile.period_label?('· formato baseado em '+d.patient_profile.period_label+', escalado para o total do período'):'';
       profileReal=true;
     }
 
@@ -1862,11 +1890,6 @@ async function loadRealData(){
       diagChart.data.datasets[1].data=diagPct.pctResp;
       diagChart.data.datasets[2].data=diagPct.pctOutras;
       diagChart.update();
-    }
-    if(typeof profileChart!=='undefined' && profileChart){
-      profileChart.data.datasets[0].data=PROFILE_MASC;
-      profileChart.data.datasets[1].data=PROFILE_FEM;
-      profileChart.update();
     }
     if(typeof costChart!=='undefined' && costChart){
       buildCostChart(costPeriod);

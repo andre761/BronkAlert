@@ -386,14 +386,40 @@ def fetch_bairro_concentration(cur):
 
 
 def fetch_patient_profile(cur):
-    cur.execute("SELECT faixa_etaria, sexo_desc, qt_internacoes FROM vw_perfil_paciente")
-    by_key = {(faixa, sexo): int(qt) for faixa, sexo, qt in cur.fetchall()}
-    labels = ["Menor de 1 ano", "1 a 2 anos", "Maior de 2 anos", "Não informado"]
+    # VW_PERFIL_PACIENTE_MENSAL (não VW_PERFIL_PACIENTE, que é geral/todas as
+    # causas) — mesma view e mesmo mês de fetch_age, só aberta por sexo em
+    # vez de só somada, pra bater exatamente com age_data.
+    cur.execute(
+        """
+        SELECT faixa_etaria, sexo_desc, qt_internacoes
+        FROM vw_perfil_paciente_mensal
+        WHERE mes_ref = (
+            SELECT mes_ref FROM vw_perfil_paciente_mensal
+            ORDER BY TO_DATE(mes_ref,'MM/YYYY') DESC FETCH FIRST 1 ROW ONLY
+        )
+        """
+    )
+    rows = cur.fetchall()
+    if not rows:
+        raise ValueError("sem linhas")
+    by_key = {}
+    for faixa, sexo, qt in rows:
+        by_key[(faixa, sexo)] = by_key.get((faixa, sexo), 0) + int(qt)
+    labels = FALLBACK["age_labels"]
     masc = [by_key.get((l, "Masculino"), 0) for l in labels]
     fem = [by_key.get((l, "Feminino"), 0) for l in labels]
     if sum(masc) + sum(fem) == 0:
         raise ValueError("sem dados de perfil")
-    return {"labels": labels, "masculino": masc, "feminino": fem}
+
+    cur.execute(
+        """
+        SELECT mes_ref FROM vw_perfil_paciente_mensal
+        ORDER BY TO_DATE(mes_ref,'MM/YYYY') DESC FETCH FIRST 1 ROW ONLY
+        """
+    )
+    row = cur.fetchone()
+    period_label = row[0] if row else None
+    return {"labels": labels, "masculino": masc, "feminino": fem, "period_label": period_label}
 
 
 def fetch_cost_share(cur):
