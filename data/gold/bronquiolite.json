@@ -19,6 +19,12 @@
     "precip": [1.4, 4.3, 14.4, 3.6, 1.7, 9.7, 9.1]
   },
 
+  "weekly_climate": {
+    "temp_max": [17.37, 21.47, 23.54, 28.27],
+    "temp_min": [11.51, 10.86, 14.11, 16.31],
+    "note": "Mesmas 4 semanas de weekly_casos (VW_CASOS_SEMANAIS.MEDIA_TEMP_MAX/MEDIA_TEMP_MIN)."
+  },
+
   "weekly_alert_trend": {
     "labels": ["30/12/2024", "06/01/2025", "13/01/2025", "20/01/2025", "03/02/2025", "10/02/2025", "17/02/2025"],
     "casos": [38278, 53648, 54424, 55063, 55882, 57585, 58716],

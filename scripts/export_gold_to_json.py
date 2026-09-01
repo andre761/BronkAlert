@@ -249,6 +249,21 @@ def fetch_daily_climate(cur):
     }
 
 
+def fetch_weekly_climate(cur):
+    # Mesmas 4 semanas de fetch_weekly (mesmo ORDER BY/LIMIT) — dá pra cruzar
+    # com weekly_casos pelo índice, igual já se faz com daily_climate.
+    cur.execute(
+        "SELECT semana, media_temp_max, media_temp_min FROM vw_casos_semanais ORDER BY semana DESC FETCH FIRST 4 ROWS ONLY"
+    )
+    rows = list(reversed(cur.fetchall()))
+    if not rows:
+        raise ValueError("sem linhas")
+    return {
+        "temp_max": [float(r[1]) for r in rows],
+        "temp_min": [float(r[2]) for r in rows],
+    }
+
+
 def fetch_weekly_alert_trend(cur):
     cur.execute(
         """
@@ -453,6 +468,7 @@ def main():
     zones = safe("zonas de SP (VW_HOSPITAL_DESEMPENHO)", lambda: fetch_zones(cur))
     hospitals = safe("hospitais de SP (VW_HOSPITAL_DESEMPENHO)", lambda: fetch_hospitals(cur))
     daily_climate = safe("clima diário (VW_CASOS_DIARIOS)", lambda: fetch_daily_climate(cur))
+    weekly_climate = safe("clima semanal (VW_CASOS_SEMANAIS)", lambda: fetch_weekly_climate(cur))
     weekly_alert_trend = safe("tendência semanal com alerta (VW_CASOS_SEMANAIS + VW_ALERTA_RISCO_SEMANAL)", lambda: fetch_weekly_alert_trend(cur))
     seasonality = safe("sazonalidade mensal (VW_SAZONALIDADE_MENSAL)", lambda: fetch_seasonality(cur))
     diagnostic_monthly = safe("comparativo de diagnósticos (VW_COMPARATIVO_DIAGNOSTICO_MENSAL)", lambda: fetch_diagnostic_monthly(cur))
@@ -491,6 +507,8 @@ def main():
         dataset["hospitals"] = hospitals
     if daily_climate:
         dataset["daily_climate"] = daily_climate
+    if weekly_climate:
+        dataset["weekly_climate"] = weekly_climate
     if weekly_alert_trend:
         dataset["weekly_alert_trend"] = weekly_alert_trend
     if seasonality:

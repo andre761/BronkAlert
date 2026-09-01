@@ -523,8 +523,17 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
   </div>
 
   <div class="section card">
-    <h2>🌡️ Tendência diária — casos e clima</h2>
-    <div class="sub" style="font-size:13px;margin-bottom:6px">Internações por bronquiolite e temperatura, dia a dia · <span class="pill" id="dailyClimateDataPill">Dados simulados</span></div>
+    <div class="chart-card-head">
+      <div>
+        <h2>🌡️ Tendência — casos e clima</h2>
+        <div class="sub" style="font-size:13px">Internações por bronquiolite e temperatura, <span id="climateGranularityLabel">dia a dia</span> · <span class="pill" id="dailyClimateDataPill">Dados simulados</span></div>
+      </div>
+      <div class="period-tabs" id="climateTabs">
+        <button type="button" class="period-tab active" data-period="semana">Semana</button>
+        <button type="button" class="period-tab" data-period="mes">Mês</button>
+        <button type="button" class="period-tab" data-period="ano">Ano</button>
+      </div>
+    </div>
     <div class="chart-wrap"><canvas id="dailyClimateChart"></canvas></div>
   </div>
 
@@ -1102,6 +1111,11 @@ function initExtraCharts(tooltipStyle){
       }
     }
   });
+  document.getElementById('climateTabs').addEventListener('click',function(e){
+    const btn=e.target.closest('.period-tab');
+    if(!btn) return;
+    setClimatePeriod(btn.dataset.period);
+  });
 
   alertWeekChart=new Chart(document.getElementById('alertWeekChart'),{
     type:'line',
@@ -1215,7 +1229,54 @@ function setEvoPeriod(period){
   const sign=pct>0?'+':'';
   note.innerHTML=t.icon+' <b>'+t.text+'</b> de '+sign+pct+'% no período selecionado ('+first+' → '+last+' casos ativos).';
 
-  document.querySelectorAll('.period-tab').forEach(function(b){
+  document.querySelectorAll('#evoTabs .period-tab').forEach(function(b){
+    b.classList.toggle('active', b.dataset.period===period);
+  });
+}
+
+// Config do card "Tendência — casos e clima": cada período reaproveita dados
+// já reais em outra granularidade — Semana usa os 7 dias reais, Mês usa as 4
+// semanas reais (mesmas do card de evolução), Ano usa a evolução mensal real
+// cruzada com a temperatura da sazonalidade mensal (mesmo mês).
+const CLIMATE_LABELS={semana:'dia a dia',mes:'por semana (últimas 4)',ano:'por mês (ano)'};
+function seasonalTempFor(label,kind){
+  const idx=SEASONAL_LABELS.indexOf(label);
+  if(idx<0) return null;
+  return kind==='max'?SEASONAL_TEMP_MAX[idx]:SEASONAL_TEMP_MIN[idx];
+}
+const CLIMATE_CONFIG={
+  semana:{
+    labels:function(){return DAILY_LABELS||dayLabelsBack(DAILY_CASOS.length);},
+    casos:function(){return DAILY_CASOS;},
+    tempMax:function(){return DAILY_TEMP_MAX;},
+    tempMin:function(){return DAILY_TEMP_MIN;}
+  },
+  mes:{
+    labels:function(){return WEEKLY_LABELS||weekLabelsBack(WEEKLY_CASOS.length);},
+    casos:function(){return WEEKLY_CASOS;},
+    tempMax:function(){return WEEKLY_TEMP_MAX;},
+    tempMin:function(){return WEEKLY_TEMP_MIN;}
+  },
+  ano:{
+    labels:function(){return MONTHLY_LABELS||monthLabelsBack(MONTHLY_CASOS.length);},
+    casos:function(){return MONTHLY_CASOS;},
+    tempMax:function(){return CLIMATE_CONFIG.ano.labels().map(function(l){return seasonalTempFor(l,'max');});},
+    tempMin:function(){return CLIMATE_CONFIG.ano.labels().map(function(l){return seasonalTempFor(l,'min');});}
+  }
+};
+let climatePeriod='semana';
+function setClimatePeriod(period){
+  const cfg=CLIMATE_CONFIG[period];
+  if(!cfg || typeof dailyClimateChart==='undefined' || !dailyClimateChart) return;
+  climatePeriod=period;
+  dailyClimateChart.data.labels=cfg.labels();
+  dailyClimateChart.data.datasets[0].data=cfg.casos();
+  dailyClimateChart.data.datasets[1].data=cfg.tempMax();
+  dailyClimateChart.data.datasets[2].data=cfg.tempMin();
+  dailyClimateChart.update();
+  const label=document.getElementById('climateGranularityLabel');
+  if(label) label.textContent=CLIMATE_LABELS[period];
+  document.querySelectorAll('#climateTabs .period-tab').forEach(function(b){
     b.classList.toggle('active', b.dataset.period===period);
   });
 }
@@ -1414,6 +1475,8 @@ function initMonthFilterHandlers(){
 let DAILY_TEMP_MAX=[29,28,30,27,26,25,24];   // °C, mesmos dias do DAILY_CASOS
 let DAILY_TEMP_MIN=[19,18,20,17,16,15,14];
 let DAILY_PRECIP=[5,8,3,12,6,2,0];           // mm
+let WEEKLY_TEMP_MAX=[24,23,22,21];           // °C, mesmas 4 semanas do WEEKLY_CASOS
+let WEEKLY_TEMP_MIN=[15,14,13,12];
 
 let ALERT_WEEK_LABELS=['S-6','S-5','S-4','S-3','S-2','S-1','Atual'];
 let ALERT_WEEK_CASOS=[420,440,460,480,470,455,445]; // internações GERAIS da semana (não só bronquiolite)
@@ -1423,6 +1486,7 @@ let ALERT_WEEK_QUEDA=[null,0.2,1.1,-0.5,0.4,0.6,0.3]; // queda de temp. mín. vs
 let SEASONAL_LABELS=MONTH_ABBR.slice();
 let SEASONAL_CASOS=[180000,175000,190000,195000,205000,210000,215000,212000,208000,200000,190000,160000]; // internações gerais
 let SEASONAL_TEMP_MAX=[29,29,28,26,24,22,21,22,24,26,27,29];
+let SEASONAL_TEMP_MIN=[19,19,18,16,14,12,11,12,14,15,17,19];
 let SEASONAL_PRECIP=[140,120,110,90,60,45,30,35,50,90,120,140];
 
 let DIAG_LABELS=monthLabelsBack(6);
@@ -1539,6 +1603,12 @@ async function loadRealData(){
       if(Array.isArray(d.daily_climate.precip)) DAILY_PRECIP=d.daily_climate.precip;
       dailyClimateReal=true;
     }
+    if(d.weekly_climate && Array.isArray(d.weekly_climate.temp_max) && d.weekly_climate.temp_max.length===WEEKLY_CASOS.length
+       && Array.isArray(d.weekly_climate.temp_min) && d.weekly_climate.temp_min.length===WEEKLY_CASOS.length){
+      WEEKLY_TEMP_MAX=d.weekly_climate.temp_max;
+      WEEKLY_TEMP_MIN=d.weekly_climate.temp_min;
+      dailyClimateReal=true;
+    }
 
     let alertWeekReal=false;
     if(d.weekly_alert_trend && Array.isArray(d.weekly_alert_trend.labels) && d.weekly_alert_trend.labels.length>0
@@ -1558,6 +1628,7 @@ async function loadRealData(){
       SEASONAL_LABELS=d.seasonality.labels;
       SEASONAL_CASOS=d.seasonality.casos;
       SEASONAL_TEMP_MAX=d.seasonality.temp_max;
+      if(Array.isArray(d.seasonality.temp_min) && d.seasonality.temp_min.length===d.seasonality.labels.length) SEASONAL_TEMP_MIN=d.seasonality.temp_min;
       if(Array.isArray(d.seasonality.precip)) SEASONAL_PRECIP=d.seasonality.precip;
       seasonalReal=true;
     }
@@ -1660,13 +1731,10 @@ async function loadRealData(){
       const activeBtn=document.querySelector('.period-tab.active');
       setEvoPeriod(activeBtn?activeBtn.dataset.period:'3m');
     }
-    if(typeof dailyClimateChart!=='undefined' && dailyClimateChart){
-      dailyClimateChart.data.labels=DAILY_LABELS||dayLabelsBack(DAILY_CASOS.length);
-      dailyClimateChart.data.datasets[0].data=DAILY_CASOS;
-      dailyClimateChart.data.datasets[1].data=DAILY_TEMP_MAX;
-      dailyClimateChart.data.datasets[2].data=DAILY_TEMP_MIN;
-      dailyClimateChart.update();
-    }
+    // Reaplica o período ativo (Semana/Mês/Ano) com os dados que acabaram de
+    // chegar, em vez de só empurrar DAILY_* — assim funciona certo mesmo se
+    // o usuário já tiver trocado pra "Mês" ou "Ano" antes do fetch terminar.
+    setClimatePeriod(climatePeriod);
     if(typeof alertWeekChart!=='undefined' && alertWeekChart){
       alertWeekChart.data.labels=ALERT_WEEK_LABELS;
       alertWeekChart.data.datasets[0].data=ALERT_WEEK_CASOS;
