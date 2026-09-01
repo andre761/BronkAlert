@@ -576,9 +576,18 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
   </div>
 
   <div class="section card">
-    <h2>💰 Custo: bronquiolite vs. total</h2>
-    <div class="sub" style="font-size:13px;margin-bottom:6px">Percentual do custo hospitalar semanal atribuído à bronquiolite · <span class="pill" id="costDataPill">Dados simulados</span></div>
+    <div class="chart-card-head">
+      <div>
+        <h2>💰 Custo: bronquiolite vs. total</h2>
+        <div class="sub" style="font-size:13px" id="costSubtitle">Percentual do custo hospitalar semanal atribuído à bronquiolite · <span class="pill" id="costDataPill">Dados simulados</span></div>
+      </div>
+      <div class="period-tabs" id="costTabs">
+        <button type="button" class="period-tab active" data-period="semana">% por semana</button>
+        <button type="button" class="period-tab" data-period="mes">R$ por mês</button>
+      </div>
+    </div>
     <div class="chart-wrap"><canvas id="costChart"></canvas></div>
+    <p class="sub" style="font-size:11px;margin-top:8px" id="costNote">Percentual real (SOMA_VAL_TOT_BRONQ ÷ SOMA_VAL_TOT), mesmas 4 semanas do gráfico de evolução.</p>
   </div>
 </section>
 
@@ -967,6 +976,8 @@ function trendInfo(values){
 
 let evoChart=null, ageChart=null;
 let dailyClimateChart=null, alertWeekChart=null, seasonalChart=null, diagChart=null, bairroChart=null, profileChart=null, costChart=null;
+let SHARED_TOOLTIP_STYLE=null;
+let COST_IS_REAL=false;
 function initCharts(){
   if(evoChart || typeof Chart==='undefined') return;
   Chart.defaults.color='#91a4b9';
@@ -976,6 +987,7 @@ function initCharts(){
     backgroundColor:'#0c1b2e',titleColor:'#f5f8fc',bodyColor:'#f5f8fc',
     borderColor:'#1c3652',borderWidth:1,padding:10,cornerRadius:10,displayColors:false
   };
+  SHARED_TOOLTIP_STYLE=tooltipStyle;
 
   evoChart=new Chart(document.getElementById('evoChart'),{
     type:'line',
@@ -1200,17 +1212,77 @@ function initExtraCharts(tooltipStyle){
     }
   });
 
+  buildCostChart('semana');
+  document.getElementById('costTabs').addEventListener('click',function(e){
+    const btn=e.target.closest('.period-tab');
+    if(!btn) return;
+    setCostPeriod(btn.dataset.period);
+  });
+}
+
+// "% por semana" (real, 4 semanas) e "R$ por mês" (estimado: casos mensais
+// reais × custo médio real por caso, calculado a partir das mesmas 4
+// semanas) — muda tipo de gráfico e formatação do eixo, por isso recria o
+// chart em vez de só trocar os dados.
+function buildCostChart(period){
+  if(typeof Chart==='undefined') return;
+  const isMonth=period==='mes';
+  const avgCost=avgCostPerCase();
+  const monthLabels=MONTHLY_LABELS||monthLabelsBack(MONTHLY_CASOS.length);
+  const monthValues=avgCost?MONTHLY_CASOS.map(function(c){return typeof c==='number'?Math.round(c*avgCost):null;}):monthLabels.map(function(){return null;});
+  if(costChart){ costChart.destroy(); costChart=null; }
   costChart=new Chart(document.getElementById('costChart'),{
-    type:'line',
-    data:{labels:COST_LABELS||WEEKLY_LABELS||weekLabelsBack(COST_PCT.length),datasets:[{
-      data:COST_PCT,borderColor:'#37d39a',backgroundColor:'rgba(55,211,154,.15)',borderWidth:2,tension:.3,fill:true,pointRadius:3
-    }]},
+    type:isMonth?'bar':'line',
+    data:{
+      labels:isMonth?monthLabels:(COST_LABELS||WEEKLY_LABELS||weekLabelsBack(COST_PCT.length)),
+      datasets:[{
+        data:isMonth?monthValues:COST_PCT,
+        borderColor:'#37d39a',
+        backgroundColor:isMonth?'rgba(55,211,154,.55)':'rgba(55,211,154,.15)',
+        borderWidth:2,tension:.3,fill:!isMonth,pointRadius:isMonth?0:3,
+        borderRadius:isMonth?4:0,
+        spanGaps:false
+      }]
+    },
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:Object.assign({},tooltipStyle,{callbacks:{label:function(ctx){return ctx.parsed.y+'% do custo total';}}})},
-      scales:{x:{grid:{color:'rgba(255,255,255,.06)'}},y:{grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true,ticks:{callback:function(v){return v+'%';}}}}
+      plugins:{
+        legend:{display:false},
+        tooltip:Object.assign({},SHARED_TOOLTIP_STYLE,{callbacks:{label:function(ctx){
+          return isMonth?(formatBRL(ctx.parsed.y)+' (estimado)'):(ctx.parsed.y+'% do custo total');
+        }}})
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.06)'}},
+        y:{grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true,ticks:{callback:function(v){return isMonth?formatBRL(v):(v+'%');}}}
+      }
     }
   });
+  const sub=document.getElementById('costSubtitle');
+  const note=document.getElementById('costNote');
+  if(sub){
+    const pillClass=COST_IS_REAL?' real':'';
+    const pillText=isMonth
+      ?(COST_IS_REAL?'Estimativa (base real, Oracle Cloud)':'Estimativa (base simulada)')
+      :(COST_IS_REAL?'Dados reais (Oracle Cloud)':'Dados simulados');
+    sub.innerHTML=(isMonth
+      ?'Custo mensal estimado atribuído à bronquiolite'
+      :'Percentual do custo hospitalar semanal atribuído à bronquiolite')
+      +' · <span class="pill'+pillClass+'" id="costDataPill">'+pillText+'</span>';
+  }
+  if(note){
+    note.textContent=isMonth
+      ?'Estimado: casos reais de bronquiolite do mês × custo médio real por caso ('+(avgCost?formatBRL(avgCost):'—')+'), calculado a partir das 4 semanas reais ao lado. Não é o SOMA_VAL_TOT_BRONQ mensal direto do banco (essa granularidade só existe por semana).'
+      :'Percentual real (SOMA_VAL_TOT_BRONQ ÷ SOMA_VAL_TOT), mesmas 4 semanas do gráfico de evolução.';
+  }
+  document.querySelectorAll('#costTabs .period-tab').forEach(function(b){
+    b.classList.toggle('active', b.dataset.period===period);
+  });
+}
+let costPeriod='semana';
+function setCostPeriod(period){
+  costPeriod=period;
+  buildCostChart(period);
 }
 
 function setEvoPeriod(period){
@@ -1500,6 +1572,22 @@ let PROFILE_FEM=[280,140,950,4];
 
 let COST_LABELS=null; // usa WEEKLY_LABELS quando disponível (mesmas 4 semanas)
 let COST_PCT=[0.9,0.8,0.7,0.75]; // % do custo total atribuído à bronquiolite
+let COST_VALOR_BRONQ=[50000,45000,40000,42000]; // R$, mesmas 4 semanas (SOMA_VAL_TOT_BRONQ)
+// Custo médio real por caso de bronquiolite: soma dos R$ reais das 4 semanas
+// dividida pela soma dos casos reais dessas mesmas semanas (WEEKLY_CASOS) —
+// usado pra estimar o custo mensal (não temos SOMA_VAL_TOT_BRONQ por mês,
+// só por semana), igual ao mesmo princípio já usado no ranking de hospitais.
+function avgCostPerCase(){
+  if(!Array.isArray(COST_VALOR_BRONQ) || COST_VALOR_BRONQ.length!==WEEKLY_CASOS.length) return null;
+  let sumVal=0,sumCasos=0;
+  COST_VALOR_BRONQ.forEach(function(v,i){
+    if(typeof WEEKLY_CASOS[i]==='number'){ sumVal+=v; sumCasos+=WEEKLY_CASOS[i]; }
+  });
+  return sumCasos>0?sumVal/sumCasos:null;
+}
+function formatBRL(v){
+  return 'R$ '+Number(v).toLocaleString('pt-BR',{maximumFractionDigits:0});
+}
 
 let HOSPITAL_RANKING=[
   {name:'Hospital das Clínicas (FMUSP)',bairro:'Cerqueira César',internacoes:410,pctBronq:5.4,obitos:9,casosPorLeito:0.62},
@@ -1657,7 +1745,11 @@ async function loadRealData(){
     if(d.cost_share && Array.isArray(d.cost_share.pct) && d.cost_share.pct.length>0){
       COST_PCT=d.cost_share.pct;
       COST_LABELS=Array.isArray(d.cost_share.labels)&&d.cost_share.labels.length===COST_PCT.length?d.cost_share.labels:null;
+      if(Array.isArray(d.cost_share.valor_bronq) && d.cost_share.valor_bronq.length===COST_PCT.length){
+        COST_VALOR_BRONQ=d.cost_share.valor_bronq;
+      }
       costReal=true;
+      COST_IS_REAL=true;
     }
 
     let hospRankReal=false;
@@ -1703,7 +1795,8 @@ async function loadRealData(){
       if(seasonalReal) markReal('seasonalDataPill');
       if(diagReal) markReal('diagDataPill');
       if(profileReal) markReal('profileDataPill');
-      if(costReal) markReal('costDataPill');
+      // costDataPill é controlado pelo buildCostChart() (o texto muda com a
+      // aba Semana/Mês) — não sobrescreve aqui.
       // hospRankDataPill/bairroDataPill já nascem marcados como reais no HTML
       // (o total bate com a evolução mensal real) — só troca o texto do pill
       // se o snapshot algum dia trouxer os itens exatos por hospital/bairro.
@@ -1761,9 +1854,7 @@ async function loadRealData(){
       profileChart.update();
     }
     if(typeof costChart!=='undefined' && costChart){
-      costChart.data.labels=COST_LABELS||WEEKLY_LABELS||weekLabelsBack(COST_PCT.length);
-      costChart.data.datasets[0].data=COST_PCT;
-      costChart.update();
+      buildCostChart(costPeriod);
     }
   }catch(e){
     console.warn('Dados reais indisponíveis, mantendo dados simulados.',e);

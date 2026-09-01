@@ -59,7 +59,9 @@
 
   "cost_share": {
     "labels": ["30/06/2025", "11/08/2025", "25/08/2025", "15/09/2025"],
-    "pct": [0.665, 0.357, 0.343, 0.325]
+    "pct": [0.665, 0.357, 0.343, 0.325],
+    "valor_bronq": [766244.33, 389574.96, 369652.94, 362723.55],
+    "note": "valor_bronq é o SOMA_VAL_TOT_BRONQ real dessas 4 semanas (R$); usado para estimar o custo mensal (casos reais do mês × custo médio real por caso), já que a view só tem R$ por semana, não por mês."
   },
 
   "used_fallback": false

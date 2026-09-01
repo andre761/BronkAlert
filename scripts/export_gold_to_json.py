@@ -407,15 +407,19 @@ def fetch_cost_share(cur):
     rows = list(reversed(cur.fetchall()))
     if not rows:
         raise ValueError("sem linhas")
-    labels, pct = [], []
+    labels, pct, valor_bronq = [], [], []
     for semana, total, bronq in rows:
         if not total:
             continue
         labels.append(f"{semana.day:02d}/{semana.month:02d}/{semana.year}")
         pct.append(round(float(bronq or 0) / float(total) * 100, 3))
+        valor_bronq.append(round(float(bronq or 0), 2))
     if not labels:
         raise ValueError("sem semanas com custo total")
-    return {"labels": labels, "pct": pct}
+    # valor_bronq (R$ reais por semana) permite ao site estimar um custo
+    # mensal (casos reais do mês × custo médio real por caso) — a view só
+    # tem esse valor em R$ na granularidade semanal, não mensal.
+    return {"labels": labels, "pct": pct, "valor_bronq": valor_bronq}
 
 
 def fetch_alert(cur):
