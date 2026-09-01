@@ -137,6 +137,13 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 .sp-chip b{font-weight:700}
 .sp-chip span.casos{color:var(--muted)}
 
+.month-filter{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 6px}
+.month-chip{background:#08172b;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;user-select:none}
+.month-chip:hover{border-color:var(--blue)}
+.month-chip.active{background:linear-gradient(135deg,var(--brand-red),var(--brand-red2));color:#fff;border-color:transparent}
+.filter-summary{font-size:12px;color:var(--muted);margin-bottom:10px}
+.filter-summary b{color:var(--text)}
+
 /* Página Bronquiolite */
 .info-list{margin:0;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.9}
 .info-list li{margin-bottom:2px}
@@ -283,6 +290,10 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
       </div>
 
       <div class="sp-locate" id="spLocate">Cadastre seu endereço para localizarmos sua zona.</div>
+
+      <div class="sub" style="font-size:12px;margin-top:10px">Filtrar por mês (clique para marcar/desmarcar):</div>
+      <div class="month-filter" id="monthFilterMap"></div>
+      <div class="filter-summary" id="filterSummaryMap"></div>
 
       <div id="spMap" class="sp-map"></div>
       <div class="sp-map-attr">Mapa: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div>
@@ -504,8 +515,60 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
   <div class="section card">
     <h2>👶 Distribuição por faixa etária</h2>
     <div class="sub" style="font-size:13px;margin-bottom:6px">Casos ativos registrados, por idade da criança · <span class="pill" id="ageDataPill">Dados simulados</span> <span class="small" id="agePeriod" style="color:var(--muted)"></span></div>
+    <div class="sub" style="font-size:12px;margin-bottom:2px">Filtrar por mês (o mesmo filtro do mapa — clique para marcar/desmarcar):</div>
+    <div class="month-filter" id="monthFilterAge"></div>
+    <div class="filter-summary" id="filterSummaryAge"></div>
     <div class="chart-wrap" style="height:260px"><canvas id="ageChart"></canvas></div>
     <div class="age-summary" id="ageSummary"></div>
+  </div>
+
+  <div class="section card">
+    <h2>🌡️ Tendência diária — casos e clima</h2>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Internações por bronquiolite e temperatura, dia a dia · <span class="pill" id="dailyClimateDataPill">Dados simulados</span></div>
+    <div class="chart-wrap"><canvas id="dailyClimateChart"></canvas></div>
+  </div>
+
+  <div class="section card">
+    <h2>🚨 Tendência semanal com alerta</h2>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Internações gerais por semana (não específico de bronquiolite) e status de alerta calculado pelo pipeline · <span class="pill" id="alertWeekDataPill">Dados simulados</span></div>
+    <div class="chart-wrap"><canvas id="alertWeekChart"></canvas></div>
+    <div class="age-summary" id="alertWeekSummary" style="margin-top:10px"></div>
+  </div>
+
+  <div class="section card">
+    <h2>🍂 Sazonalidade mensal</h2>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Internações gerais e temperatura máxima média, mês a mês (ano todo) · <span class="pill" id="seasonalDataPill">Dados simulados</span></div>
+    <div class="chart-wrap"><canvas id="seasonalChart"></canvas></div>
+  </div>
+
+  <div class="section card">
+    <h2>🩺 Comparativo de diagnósticos por mês</h2>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Participação da bronquiolite nas internações do mês, frente a outras causas · <span class="pill" id="diagDataPill">Dados simulados</span></div>
+    <div class="chart-wrap"><canvas id="diagChart"></canvas></div>
+  </div>
+
+  <div class="section card">
+    <h2>🏥 Ranking de hospitais</h2>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Top hospitais por volume de internação, com participação da bronquiolite · <span class="pill" id="hospRankDataPill">Dados simulados</span></div>
+    <div class="table-scroll"><table id="hospRankTable"><thead><tr><th>Hospital</th><th>Bairro</th><th>Internações</th><th>% Bronquiolite</th><th>Óbitos</th><th>Casos/leito</th></tr></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="section card">
+    <h2>📍 Concentração por bairro</h2>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Internações por bronquiolite somadas por bairro · <span class="pill" id="bairroDataPill">Dados simulados</span></div>
+    <div class="chart-wrap"><canvas id="bairroChart"></canvas></div>
+  </div>
+
+  <div class="section card">
+    <h2>🧒 Perfil de paciente — faixa etária × sexo</h2>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Todas as internações do período (não específico de bronquiolite) · <span class="pill" id="profileDataPill">Dados simulados</span></div>
+    <div class="chart-wrap"><canvas id="profileChart"></canvas></div>
+  </div>
+
+  <div class="section card">
+    <h2>💰 Custo: bronquiolite vs. total</h2>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Percentual do custo hospitalar semanal atribuído à bronquiolite · <span class="pill" id="costDataPill">Dados simulados</span></div>
+    <div class="chart-wrap"><canvas id="costChart"></canvas></div>
   </div>
 </section>
 
@@ -893,6 +956,7 @@ function trendInfo(values){
 }
 
 let evoChart=null, ageChart=null;
+let dailyClimateChart=null, alertWeekChart=null, seasonalChart=null, diagChart=null, bairroChart=null, profileChart=null, costChart=null;
 function initCharts(){
   if(evoChart || typeof Chart==='undefined') return;
   Chart.defaults.color='#91a4b9';
@@ -971,6 +1035,166 @@ function initCharts(){
   });
 
   setEvoPeriod('3m');
+  initExtraCharts(tooltipStyle);
+}
+
+function alertColor(status){
+  const s=String(status||'').toUpperCase();
+  if(s==='NORMAL') return '#37d39a';
+  if(s==='ATENCAO'||s==='MODERADO') return '#ffc857';
+  return '#ff453d';
+}
+
+function diagPercents(){
+  const n=DIAG_LABELS.length, pctBronq=[], pctResp=[], pctOutras=[];
+  for(let i=0;i<n;i++){
+    const total=(DIAG_BRONQ[i]||0)+(DIAG_RESP[i]||0)+(DIAG_OUTRAS[i]||0);
+    pctBronq.push(total>0?+(DIAG_BRONQ[i]/total*100).toFixed(2):0);
+    pctResp.push(total>0?+(DIAG_RESP[i]/total*100).toFixed(2):0);
+    pctOutras.push(total>0?+(DIAG_OUTRAS[i]/total*100).toFixed(2):0);
+  }
+  return {pctBronq:pctBronq,pctResp:pctResp,pctOutras:pctOutras};
+}
+
+function updateAlertWeekSummary(){
+  const el=document.getElementById('alertWeekSummary');
+  if(!el) return;
+  el.innerHTML=ALERT_WEEK_LABELS.map(function(l,i){
+    const st=ALERT_WEEK_STATUS[i]||'NORMAL';
+    const cls=st==='NORMAL'?'lvl0':(st==='ATENCAO'||st==='MODERADO'?'lvl1':'lvl3');
+    return '<span><i class="dot '+cls+'" style="display:inline-block;margin-right:5px"></i>'+l+': <b>'+st+'</b></span>';
+  }).join('');
+}
+
+function renderHospitalRanking(){
+  const tbody=document.querySelector('#hospRankTable tbody');
+  if(!tbody) return;
+  tbody.innerHTML=HOSPITAL_RANKING.map(function(h){
+    return '<tr><td>'+h.name+'</td><td>'+h.bairro+'</td><td>'+h.internacoes+'</td><td>'+h.pctBronq+'%</td><td>'+h.obitos+'</td><td>'+h.casosPorLeito+'</td></tr>';
+  }).join('');
+}
+
+// Gráficos "extras" (clima, alerta semanal, sazonalidade, diagnóstico,
+// ranking de hospitais, concentração por bairro e perfil de paciente) —
+// pedidos junto com as queries do Power BI. Reais quando o snapshot trouxer
+// a chave correspondente (ver loadRealData); simulados até lá.
+function initExtraCharts(tooltipStyle){
+  if(dailyClimateChart || typeof Chart==='undefined') return;
+
+  dailyClimateChart=new Chart(document.getElementById('dailyClimateChart'),{
+    data:{
+      labels:DAILY_LABELS||dayLabelsBack(DAILY_CASOS.length),
+      datasets:[
+        {type:'bar',label:'Casos (bronquiolite)',data:DAILY_CASOS,backgroundColor:'rgba(255,69,61,.55)',borderRadius:4,yAxisID:'y',order:2},
+        {type:'line',label:'Temp. máxima (°C)',data:DAILY_TEMP_MAX,borderColor:'#ffc857',backgroundColor:'transparent',tension:.3,yAxisID:'y1',pointRadius:2,order:1},
+        {type:'line',label:'Temp. mínima (°C)',data:DAILY_TEMP_MIN,borderColor:'#39b9ff',backgroundColor:'transparent',tension:.3,yAxisID:'y1',pointRadius:2,order:1}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:11}}},tooltip:tooltipStyle},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.06)'}},
+        y:{position:'left',grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true,ticks:{precision:0}},
+        y1:{position:'right',grid:{display:false}}
+      }
+    }
+  });
+
+  alertWeekChart=new Chart(document.getElementById('alertWeekChart'),{
+    type:'line',
+    data:{labels:ALERT_WEEK_LABELS,datasets:[{
+      data:ALERT_WEEK_CASOS,
+      borderColor:'#39b9ff',backgroundColor:'rgba(57,185,255,.12)',borderWidth:2,tension:.3,fill:true,
+      pointRadius:6,pointHoverRadius:8,
+      pointBackgroundColor:function(ctx){return alertColor(ALERT_WEEK_STATUS[ctx.dataIndex]);},
+      pointBorderColor:'#04101f',pointBorderWidth:2
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:Object.assign({},tooltipStyle,{callbacks:{
+        label:function(ctx){return ctx.parsed.y+' internações · status: '+(ALERT_WEEK_STATUS[ctx.dataIndex]||'—');}
+      }})},
+      scales:{x:{grid:{color:'rgba(255,255,255,.06)'}},y:{grid:{color:'rgba(255,255,255,.06)'},beginAtZero:false,ticks:{precision:0}}}
+    }
+  });
+  updateAlertWeekSummary();
+
+  seasonalChart=new Chart(document.getElementById('seasonalChart'),{
+    data:{
+      labels:SEASONAL_LABELS,
+      datasets:[
+        {type:'bar',label:'Internações gerais',data:SEASONAL_CASOS,backgroundColor:'rgba(57,185,255,.5)',borderRadius:4,yAxisID:'y',order:2},
+        {type:'line',label:'Temp. máxima média (°C)',data:SEASONAL_TEMP_MAX,borderColor:'#ffc857',backgroundColor:'transparent',tension:.3,yAxisID:'y1',pointRadius:2,order:1}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:11}}},tooltip:tooltipStyle},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.06)'},ticks:{maxRotation:0}},
+        y:{position:'left',grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true},
+        y1:{position:'right',grid:{display:false}}
+      }
+    }
+  });
+
+  const diagPct=diagPercents();
+  diagChart=new Chart(document.getElementById('diagChart'),{
+    type:'bar',
+    data:{labels:DIAG_LABELS,datasets:[
+      {label:'Bronquiolite',data:diagPct.pctBronq,backgroundColor:'#ff453d',stack:'s'},
+      {label:'Outras doenças respiratórias',data:diagPct.pctResp,backgroundColor:'#ffc857',stack:'s'},
+      {label:'Outras causas',data:diagPct.pctOutras,backgroundColor:'#284a6b',stack:'s'}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:11}}},tooltip:Object.assign({},tooltipStyle,{callbacks:{
+        label:function(ctx){return ctx.dataset.label+': '+ctx.parsed.y+'%';}
+      }})},
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,max:100,grid:{color:'rgba(255,255,255,.06)'},ticks:{callback:function(v){return v+'%';}}}}
+    }
+  });
+
+  renderHospitalRanking();
+
+  bairroChart=new Chart(document.getElementById('bairroChart'),{
+    type:'bar',
+    data:{labels:BAIRRO_CONCENTRATION.map(function(b){return b.bairro;}),datasets:[{
+      data:BAIRRO_CONCENTRATION.map(function(b){return b.casos;}),
+      backgroundColor:'#ff6a4d',borderRadius:6,maxBarThickness:28
+    }]},
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:Object.assign({},tooltipStyle,{callbacks:{label:function(ctx){return ctx.parsed.x+' internações por bronquiolite';}}})},
+      scales:{x:{grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true,ticks:{precision:0}},y:{grid:{display:false}}}
+    }
+  });
+
+  profileChart=new Chart(document.getElementById('profileChart'),{
+    type:'bar',
+    data:{labels:PROFILE_LABELS,datasets:[
+      {label:'Masculino',data:PROFILE_MASC,backgroundColor:'#39b9ff',borderRadius:4},
+      {label:'Feminino',data:PROFILE_FEM,backgroundColor:'#ff6a9e',borderRadius:4}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:11}}},tooltip:tooltipStyle},
+      scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true,ticks:{precision:0}}}
+    }
+  });
+
+  costChart=new Chart(document.getElementById('costChart'),{
+    type:'line',
+    data:{labels:COST_LABELS||WEEKLY_LABELS||weekLabelsBack(COST_PCT.length),datasets:[{
+      data:COST_PCT,borderColor:'#37d39a',backgroundColor:'rgba(55,211,154,.15)',borderWidth:2,tension:.3,fill:true,pointRadius:3
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:Object.assign({},tooltipStyle,{callbacks:{label:function(ctx){return ctx.parsed.y+'% do custo total';}}})},
+      scales:{x:{grid:{color:'rgba(255,255,255,.06)'}},y:{grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true,ticks:{callback:function(v){return v+'%';}}}}
+    }
+  });
 }
 
 function setEvoPeriod(period){
@@ -1019,6 +1243,175 @@ let HOSPITALS=[
   {name:'Hospital Municipal Infantil Menino Jesus',bairro:'Vila Buarque',casos:12,coords:[-23.5445,-46.6478]},
   {name:'Hospital e Maternidade Santa Joana',bairro:'Paraíso',casos:8,coords:[-23.5717,-46.6560]},
   {name:'Hospital Infantil Darcy Vargas',bairro:'Planalto Paulista',casos:11,coords:[-23.6055,-46.6473]}
+];
+
+// ---- Filtro por mês (mapa + faixa etária) ----
+// Não temos, por enquanto, o número real de casos por zona/hospital/faixa
+// etária QUEBRADO por mês — só um total "atual" de cada um. Em vez de
+// inventar um valor mensal, guardamos esse total como "base" (BASE) e, ao
+// filtrar por um subconjunto de meses, escalamos essa base pela fração real
+// que aqueles meses representam do total do período (usando MONTHLY_CASOS,
+// que É real). O resultado é uma ESTIMATIVA proporcional, deixada clara na
+// tela — não um valor direto do banco por mês.
+let SP_ZONES_BASE=null, HOSPITALS_BASE=null, AGE_DATA_BASE=null;
+function captureFilterBase(){
+  SP_ZONES_BASE={};
+  Object.keys(SP_ZONES).forEach(function(k){ SP_ZONES_BASE[k]={casos:SP_ZONES[k].casos}; });
+  HOSPITALS_BASE=HOSPITALS.map(function(h){ return {casos:h.casos}; });
+  AGE_DATA_BASE={values:AGE_DATA.values.slice()};
+}
+function getMonthLabels(){
+  return MONTHLY_LABELS||monthLabelsBack(MONTHLY_CASOS.length);
+}
+let MONTH_FILTER=null;
+function resetMonthFilterToAll(){
+  MONTH_FILTER=new Set(getMonthLabels());
+}
+function fullPeriodTotal(){
+  let total=0;
+  MONTHLY_CASOS.forEach(function(v){ if(typeof v==='number') total+=v; });
+  return total;
+}
+function selectedPeriodTotal(){
+  const labels=getMonthLabels();
+  let total=0;
+  labels.forEach(function(l,i){
+    if(MONTH_FILTER.has(l) && typeof MONTHLY_CASOS[i]==='number') total+=MONTHLY_CASOS[i];
+  });
+  return total;
+}
+function selectedFraction(){
+  const full=fullPeriodTotal();
+  return full>0?(selectedPeriodTotal()/full):1;
+}
+function monthChipLabel(m){
+  if(String(m).indexOf('/')===-1) return m; // rótulo simulado (já abreviado)
+  const parts=String(m).split('/');
+  const mm=parseInt(parts[0],10);
+  return (MONTH_ABBR[mm-1]||m)+'/'+String(parts[1]).slice(2);
+}
+function applyMonthFilter(){
+  const frac=selectedFraction();
+  if(SP_ZONES_BASE){
+    Object.keys(SP_ZONES).forEach(function(k){
+      const base=SP_ZONES_BASE[k];
+      SP_ZONES[k].casos=base?Math.round(base.casos*frac):SP_ZONES[k].casos;
+    });
+  }
+  if(HOSPITALS_BASE){
+    HOSPITALS.forEach(function(h,i){
+      const base=HOSPITALS_BASE[i];
+      if(base) h.casos=Math.round(base.casos*frac);
+    });
+  }
+  if(AGE_DATA_BASE){
+    AGE_DATA.values=AGE_DATA_BASE.values.map(function(v){ return Math.round(v*frac); });
+  }
+  renderMonthFilterUI();
+  if(window.__lastLoc) renderLocation(window.__lastLoc);
+  if(typeof ageChart!=='undefined' && ageChart){
+    ageChart.data.labels=AGE_DATA.labels;
+    ageChart.data.datasets[0].data=AGE_DATA.values;
+    ageChart.update();
+    updateAgeSummary();
+  }
+}
+function updateAgeSummary(){
+  const ageSummary=document.getElementById('ageSummary');
+  if(ageSummary){
+    ageSummary.innerHTML=AGE_DATA.labels.map(function(l,i){return '<span><b>'+AGE_DATA.values[i]+'</b> '+l+'</span>';}).join('');
+  }
+}
+function renderMonthFilterUI(){
+  if(!MONTH_FILTER) resetMonthFilterToAll();
+  const labels=getMonthLabels();
+  const allSelected=MONTH_FILTER.size===labels.length;
+  const html=labels.map(function(l){
+    const active=MONTH_FILTER.has(l);
+    return '<button type="button" class="month-chip'+(active?' active':'')+'" data-month="'+l.replace(/"/g,'')+'">'+monthChipLabel(l)+'</button>';
+  }).join('');
+  ['monthFilterMap','monthFilterAge'].forEach(function(id){
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=html;
+  });
+  const total=selectedPeriodTotal();
+  const pct=Math.round(selectedFraction()*100);
+  const summary=allSelected
+    ? 'Mostrando o período completo disponível ('+total+' casos de bronquiolite).'
+    : '🔎 <b>'+total+' casos</b> nos meses marcados ('+pct+'% do total do período) — estimativa proporcional para o mapa e a faixa etária, calculada a partir da evolução mensal real; não é um valor direto do banco por mês.';
+  ['filterSummaryMap','filterSummaryAge'].forEach(function(id){
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=summary;
+  });
+}
+function initMonthFilterHandlers(){
+  ['monthFilterMap','monthFilterAge'].forEach(function(id){
+    const el=document.getElementById(id);
+    if(!el || el.dataset.bound) return;
+    el.dataset.bound='1';
+    el.addEventListener('click',function(e){
+      const btn=e.target.closest('.month-chip');
+      if(!btn) return;
+      const m=btn.dataset.month;
+      if(MONTH_FILTER.has(m)){
+        if(MONTH_FILTER.size>1) MONTH_FILTER.delete(m);
+        else { showToast('Selecione ao menos um mês.'); return; }
+      } else {
+        MONTH_FILTER.add(m);
+      }
+      applyMonthFilter();
+    });
+  });
+}
+captureFilterBase();
+resetMonthFilterToAll();
+initMonthFilterHandlers();
+renderMonthFilterUI();
+
+// ---- Indicadores extras de Monitoramento (dados simulados até o snapshot
+// trazer as chaves reais correspondentes — ver loadRealData) ----
+let DAILY_TEMP_MAX=[29,28,30,27,26,25,24];   // °C, mesmos dias do DAILY_CASOS
+let DAILY_TEMP_MIN=[19,18,20,17,16,15,14];
+let DAILY_PRECIP=[5,8,3,12,6,2,0];           // mm
+
+let ALERT_WEEK_LABELS=['S-6','S-5','S-4','S-3','S-2','S-1','Atual'];
+let ALERT_WEEK_CASOS=[420,440,460,480,470,455,445]; // internações GERAIS da semana (não só bronquiolite)
+let ALERT_WEEK_STATUS=['NORMAL','NORMAL','ATENCAO','ATENCAO','NORMAL','NORMAL','NORMAL'];
+let ALERT_WEEK_QUEDA=[null,0.2,1.1,-0.5,0.4,0.6,0.3]; // queda de temp. mín. vs. 2 semanas atrás (°C)
+
+let SEASONAL_LABELS=MONTH_ABBR.slice();
+let SEASONAL_CASOS=[180000,175000,190000,195000,205000,210000,215000,212000,208000,200000,190000,160000]; // internações gerais
+let SEASONAL_TEMP_MAX=[29,29,28,26,24,22,21,22,24,26,27,29];
+let SEASONAL_PRECIP=[140,120,110,90,60,45,30,35,50,90,120,140];
+
+let DIAG_LABELS=monthLabelsBack(6);
+let DIAG_BRONQ=[500,600,900,1200,1000,700];
+let DIAG_RESP=[15000,16000,17000,18000,17500,16500];
+let DIAG_OUTRAS=[210000,212000,215000,213000,214000,211000];
+
+const PROFILE_LABELS=['Menor de 1 ano','1 a 2 anos','Maior de 2 anos','Não informado'];
+let PROFILE_MASC=[300,150,900,5];
+let PROFILE_FEM=[280,140,950,4];
+
+let COST_LABELS=null; // usa WEEKLY_LABELS quando disponível (mesmas 4 semanas)
+let COST_PCT=[0.9,0.8,0.7,0.75]; // % do custo total atribuído à bronquiolite
+
+let HOSPITAL_RANKING=[
+  {name:'Hospital das Clínicas (FMUSP)',bairro:'Cerqueira César',internacoes:410,pctBronq:5.4,obitos:9,casosPorLeito:0.62},
+  {name:'Santa Casa de São Paulo',bairro:'Santa Cecília',internacoes:365,pctBronq:4.7,obitos:8,casosPorLeito:0.58},
+  {name:'Hospital São Paulo (UNIFESP)',bairro:'Vila Clementino',internacoes:298,pctBronq:4.7,obitos:6,casosPorLeito:0.51},
+  {name:'Hospital Municipal Infantil Menino Jesus',bairro:'Vila Buarque',internacoes:210,pctBronq:5.7,obitos:2,casosPorLeito:0.74},
+  {name:'Hospital Infantil Darcy Vargas',bairro:'Planalto Paulista',internacoes:187,pctBronq:5.9,obitos:1,casosPorLeito:0.69},
+  {name:'Hospital e Maternidade Santa Joana',bairro:'Paraíso',internacoes:165,pctBronq:4.8,obitos:1,casosPorLeito:0.55},
+  {name:'Hospital Israelita Albert Einstein',bairro:'Morumbi',internacoes:150,pctBronq:6.0,obitos:0,casosPorLeito:0.47},
+  {name:'Hospital Sírio-Libanês',bairro:'Bela Vista',internacoes:98,pctBronq:6.1,obitos:0,casosPorLeito:0.39}
+];
+
+let BAIRRO_CONCENTRATION=[
+  {bairro:'Santa Cecília',casos:23},{bairro:'Cerqueira César',casos:22},
+  {bairro:'Vila Clementino',casos:14},{bairro:'Vila Buarque',casos:12},
+  {bairro:'Planalto Paulista',casos:11},{bairro:'Paraíso',casos:8},
+  {bairro:'Morumbi',casos:9},{bairro:'Bela Vista',casos:6}
 ];
 
 // Carrega dados reais (DATASUS/CNES/INMET), gerados pela automação do GitHub Actions
@@ -1090,6 +1483,82 @@ async function loadRealData(){
       REAL_ALERT={status:String(d.alert_status).toUpperCase(),casos:d.alert_casos};
     }
 
+    // ---- Indicadores extras (Power BI): cada bloco só substitui os dados
+    // simulados se o snapshot trouxer a chave com o formato esperado. ----
+    let dailyClimateReal=false;
+    if(d.daily_climate && Array.isArray(d.daily_climate.temp_max) && d.daily_climate.temp_max.length===DAILY_CASOS.length
+       && Array.isArray(d.daily_climate.temp_min) && d.daily_climate.temp_min.length===DAILY_CASOS.length){
+      DAILY_TEMP_MAX=d.daily_climate.temp_max;
+      DAILY_TEMP_MIN=d.daily_climate.temp_min;
+      if(Array.isArray(d.daily_climate.precip)) DAILY_PRECIP=d.daily_climate.precip;
+      dailyClimateReal=true;
+    }
+
+    let alertWeekReal=false;
+    if(d.weekly_alert_trend && Array.isArray(d.weekly_alert_trend.labels) && d.weekly_alert_trend.labels.length>0
+       && Array.isArray(d.weekly_alert_trend.casos) && d.weekly_alert_trend.casos.length===d.weekly_alert_trend.labels.length
+       && Array.isArray(d.weekly_alert_trend.status) && d.weekly_alert_trend.status.length===d.weekly_alert_trend.labels.length){
+      ALERT_WEEK_LABELS=d.weekly_alert_trend.labels;
+      ALERT_WEEK_CASOS=d.weekly_alert_trend.casos;
+      ALERT_WEEK_STATUS=d.weekly_alert_trend.status;
+      ALERT_WEEK_QUEDA=Array.isArray(d.weekly_alert_trend.queda_temp)?d.weekly_alert_trend.queda_temp:ALERT_WEEK_LABELS.map(function(){return null;});
+      alertWeekReal=true;
+    }
+
+    let seasonalReal=false;
+    if(d.seasonality && Array.isArray(d.seasonality.labels) && d.seasonality.labels.length>0
+       && Array.isArray(d.seasonality.casos) && d.seasonality.casos.length===d.seasonality.labels.length
+       && Array.isArray(d.seasonality.temp_max) && d.seasonality.temp_max.length===d.seasonality.labels.length){
+      SEASONAL_LABELS=d.seasonality.labels;
+      SEASONAL_CASOS=d.seasonality.casos;
+      SEASONAL_TEMP_MAX=d.seasonality.temp_max;
+      if(Array.isArray(d.seasonality.precip)) SEASONAL_PRECIP=d.seasonality.precip;
+      seasonalReal=true;
+    }
+
+    let diagReal=false;
+    if(d.diagnostic_monthly && Array.isArray(d.diagnostic_monthly.labels) && d.diagnostic_monthly.labels.length>0
+       && Array.isArray(d.diagnostic_monthly.bronquiolite) && d.diagnostic_monthly.bronquiolite.length===d.diagnostic_monthly.labels.length
+       && Array.isArray(d.diagnostic_monthly.respiratorias) && Array.isArray(d.diagnostic_monthly.outras)){
+      DIAG_LABELS=d.diagnostic_monthly.labels;
+      DIAG_BRONQ=d.diagnostic_monthly.bronquiolite;
+      DIAG_RESP=d.diagnostic_monthly.respiratorias;
+      DIAG_OUTRAS=d.diagnostic_monthly.outras;
+      diagReal=true;
+    }
+
+    let profileReal=false;
+    if(d.patient_profile && Array.isArray(d.patient_profile.labels) && d.patient_profile.labels.length>0
+       && Array.isArray(d.patient_profile.masculino) && d.patient_profile.masculino.length===d.patient_profile.labels.length
+       && Array.isArray(d.patient_profile.feminino) && d.patient_profile.feminino.length===d.patient_profile.labels.length){
+      PROFILE_MASC=d.patient_profile.masculino;
+      PROFILE_FEM=d.patient_profile.feminino;
+      profileReal=true;
+    }
+
+    let costReal=false;
+    if(d.cost_share && Array.isArray(d.cost_share.pct) && d.cost_share.pct.length>0){
+      COST_PCT=d.cost_share.pct;
+      COST_LABELS=Array.isArray(d.cost_share.labels)&&d.cost_share.labels.length===COST_PCT.length?d.cost_share.labels:null;
+      costReal=true;
+    }
+
+    let hospRankReal=false;
+    if(Array.isArray(d.hospital_ranking) && d.hospital_ranking.length>0 && d.hospital_ranking.every(function(h){
+      return h && typeof h.name==='string' && typeof h.internacoes==='number';
+    })){
+      HOSPITAL_RANKING=d.hospital_ranking;
+      hospRankReal=true;
+    }
+
+    let bairroReal=false;
+    if(Array.isArray(d.bairro_concentration) && d.bairro_concentration.length>0 && d.bairro_concentration.every(function(b){
+      return b && typeof b.bairro==='string' && typeof b.casos==='number';
+    })){
+      BAIRRO_CONCENTRATION=d.bairro_concentration;
+      bairroReal=true;
+    }
+
     if(!d.used_fallback){
       const label=(d.source||'').toLowerCase().includes('oracle')?'Dados reais (Oracle Cloud)':'Dados reais (DATASUS)';
       const markReal=function(id){
@@ -1112,7 +1581,23 @@ async function loadRealData(){
       if(hospitalsReal){
         markReal('hospDataPill');
       }
+      if(dailyClimateReal) markReal('dailyClimateDataPill');
+      if(alertWeekReal) markReal('alertWeekDataPill');
+      if(seasonalReal) markReal('seasonalDataPill');
+      if(diagReal) markReal('diagDataPill');
+      if(profileReal) markReal('profileDataPill');
+      if(costReal) markReal('costDataPill');
+      if(hospRankReal) markReal('hospRankDataPill');
+      if(bairroReal) markReal('bairroDataPill');
     }
+
+    // A "base" do filtro por mês precisa refletir os números reais recém-
+    // chegados (não mais os simulados) e a lista de meses precisa bater com
+    // MONTHLY_LABELS real — refaz os dois e volta o filtro pra "todos os
+    // meses" (estado neutro, sem distorcer nada por padrão).
+    captureFilterBase();
+    resetMonthFilterToAll();
+    renderMonthFilterUI();
 
     // Caso os gráficos/mapa já tenham sido desenhados antes desta busca terminar, atualiza de novo.
     if(typeof evoChart!=='undefined' && evoChart){
@@ -1131,6 +1616,49 @@ async function loadRealData(){
     if(window.__lastLoc){
       renderLocation(window.__lastLoc);
     }
+    if(typeof dailyClimateChart!=='undefined' && dailyClimateChart){
+      dailyClimateChart.data.labels=DAILY_LABELS||dayLabelsBack(DAILY_CASOS.length);
+      dailyClimateChart.data.datasets[0].data=DAILY_CASOS;
+      dailyClimateChart.data.datasets[1].data=DAILY_TEMP_MAX;
+      dailyClimateChart.data.datasets[2].data=DAILY_TEMP_MIN;
+      dailyClimateChart.update();
+    }
+    if(typeof alertWeekChart!=='undefined' && alertWeekChart){
+      alertWeekChart.data.labels=ALERT_WEEK_LABELS;
+      alertWeekChart.data.datasets[0].data=ALERT_WEEK_CASOS;
+      alertWeekChart.update();
+      updateAlertWeekSummary();
+    }
+    if(typeof seasonalChart!=='undefined' && seasonalChart){
+      seasonalChart.data.labels=SEASONAL_LABELS;
+      seasonalChart.data.datasets[0].data=SEASONAL_CASOS;
+      seasonalChart.data.datasets[1].data=SEASONAL_TEMP_MAX;
+      seasonalChart.update();
+    }
+    if(typeof diagChart!=='undefined' && diagChart){
+      const diagPct=diagPercents();
+      diagChart.data.labels=DIAG_LABELS;
+      diagChart.data.datasets[0].data=diagPct.pctBronq;
+      diagChart.data.datasets[1].data=diagPct.pctResp;
+      diagChart.data.datasets[2].data=diagPct.pctOutras;
+      diagChart.update();
+    }
+    if(typeof profileChart!=='undefined' && profileChart){
+      profileChart.data.datasets[0].data=PROFILE_MASC;
+      profileChart.data.datasets[1].data=PROFILE_FEM;
+      profileChart.update();
+    }
+    if(typeof costChart!=='undefined' && costChart){
+      costChart.data.labels=COST_LABELS||WEEKLY_LABELS||weekLabelsBack(COST_PCT.length);
+      costChart.data.datasets[0].data=COST_PCT;
+      costChart.update();
+    }
+    if(typeof bairroChart!=='undefined' && bairroChart){
+      bairroChart.data.labels=BAIRRO_CONCENTRATION.map(function(b){return b.bairro;});
+      bairroChart.data.datasets[0].data=BAIRRO_CONCENTRATION.map(function(b){return b.casos;});
+      bairroChart.update();
+    }
+    renderHospitalRanking();
   }catch(e){
     console.warn('Dados reais indisponíveis, mantendo dados simulados.',e);
   }

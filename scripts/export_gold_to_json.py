@@ -235,6 +235,174 @@ def fetch_hospitals(cur):
     return hospitals
 
 
+def fetch_daily_climate(cur):
+    cur.execute(
+        "SELECT dia, temp_max, temp_min, precipitacao FROM vw_casos_diarios ORDER BY dia DESC FETCH FIRST 7 ROWS ONLY"
+    )
+    rows = list(reversed(cur.fetchall()))
+    if not rows:
+        raise ValueError("sem linhas")
+    return {
+        "temp_max": [float(r[1]) for r in rows],
+        "temp_min": [float(r[2]) for r in rows],
+        "precip": [float(r[3]) if r[3] is not None else 0.0 for r in rows],
+    }
+
+
+def fetch_weekly_alert_trend(cur):
+    cur.execute(
+        """
+        SELECT c.semana, c.qt_internacoes, a.status_alerta, a.queda_temp_min_2sem
+        FROM vw_casos_semanais c
+        JOIN vw_alerta_risco_semanal a ON c.semana = a.semana
+        ORDER BY c.semana DESC FETCH FIRST 8 ROWS ONLY
+        """
+    )
+    rows = list(reversed(cur.fetchall()))
+    if not rows:
+        raise ValueError("sem linhas")
+    return {
+        "labels": [f"{s.day:02d}/{s.month:02d}/{s.year}" for s, *_ in rows],
+        "casos": [int(v) for _, v, *_ in rows],
+        "status": [str(s).strip().upper() for *_, s, _ in rows],
+        "queda_temp": [float(q) if q is not None else None for *_, q in rows],
+    }
+
+
+def fetch_seasonality(cur):
+    cur.execute(
+        """
+        SELECT mes_ref, qt_internacoes, media_temp_max, media_temp_min, soma_precipitacao
+        FROM vw_sazonalidade_mensal
+        ORDER BY mes FETCH FIRST 24 ROWS ONLY
+        """
+    )
+    rows = cur.fetchall()
+    if not rows:
+        raise ValueError("sem linhas")
+    return {
+        "labels": [str(r[0]) for r in rows],
+        "casos": [int(r[1]) for r in rows],
+        "temp_max": [float(r[2]) for r in rows],
+        "temp_min": [float(r[3]) for r in rows],
+        "precip": [float(r[4]) if r[4] is not None else 0.0 for r in rows],
+    }
+
+
+def fetch_diagnostic_monthly(cur):
+    # Só entram os meses com as 3 categorias completas (Bronquiolite, Outras
+    # doenças respiratórias, Outras causas) — um mês com dado parcial fica de
+    # fora do gráfico em vez de aparecer com uma fatia inventada.
+    cur.execute(
+        """
+        SELECT mes_ref, categoria_diagnostico, qt_internacoes
+        FROM vw_comparativo_diagnostico_mensal
+        ORDER BY mes, categoria_diagnostico
+        """
+    )
+    by_month, order = {}, []
+    for mes_ref, categoria, qt in cur.fetchall():
+        if mes_ref not in by_month:
+            by_month[mes_ref] = {}
+            order.append(mes_ref)
+        by_month[mes_ref][categoria] = int(qt)
+    labels, bronq, resp, outras = [], [], [], []
+    for mes_ref in order:
+        cats = by_month[mes_ref]
+        if {"Bronquiolite (J21)", "Outras doenças respiratórias (J)", "Outras causas"} <= cats.keys():
+            labels.append(mes_ref)
+            bronq.append(cats["Bronquiolite (J21)"])
+            resp.append(cats["Outras doenças respiratórias (J)"])
+            outras.append(cats["Outras causas"])
+    if not labels:
+        raise ValueError("nenhum mês com as 3 categorias completas")
+    return {"labels": labels, "bronquiolite": bronq, "respiratorias": resp, "outras": outras}
+
+
+def fetch_hospital_ranking(cur):
+    # FETCH FIRST em vez do ROWNUM<=10 do rascunho original: ROWNUM é
+    # atribuído ANTES do ORDER BY, então "WHERE ROWNUM<=10 ORDER BY ..."
+    # ordena só 10 linhas arbitrárias, não as 10 de maior volume.
+    cur.execute(
+        """
+        SELECT no_fantasia, no_bairro, qt_internacoes, pct_bronquiolite, qt_obitos, casos_por_leito
+        FROM vw_hospital_desempenho
+        WHERE qt_internacoes > 0
+        ORDER BY qt_internacoes DESC
+        FETCH FIRST 10 ROWS ONLY
+        """
+    )
+    rows = cur.fetchall()
+    if not rows:
+        raise ValueError("sem linhas")
+    return [
+        {
+            "name": str(nome).strip(),
+            "bairro": str(bairro).strip().title() if bairro else "",
+            "internacoes": int(qt),
+            "pctBronq": round(float(pct), 1) if pct is not None else 0,
+            "obitos": int(obitos) if obitos is not None else 0,
+            "casosPorLeito": round(float(casos_leito), 2) if casos_leito is not None else 0,
+        }
+        for nome, bairro, qt, pct, obitos, casos_leito in rows
+    ]
+
+
+def fetch_bairro_concentration(cur):
+    # Mesma fórmula (qt_internacoes × pct_bronquiolite) usada em fetch_zones/
+    # fetch_hospitals — QT_INTERNACOES nesta view é geral, não só bronquiolite.
+    cur.execute(
+        """
+        SELECT no_bairro, qt_internacoes, pct_bronquiolite
+        FROM vw_hospital_desempenho
+        WHERE qt_internacoes > 0 AND pct_bronquiolite IS NOT NULL
+        """
+    )
+    totals = {}
+    for bairro, qt, pct in cur.fetchall():
+        if not bairro:
+            continue
+        key = str(bairro).strip().title()
+        totals[key] = totals.get(key, 0.0) + float(qt) * float(pct) / 100.0
+    if not totals:
+        raise ValueError("nenhum bairro com internação")
+    ranked = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)[:12]
+    return [{"bairro": k, "casos": round(v)} for k, v in ranked]
+
+
+def fetch_patient_profile(cur):
+    cur.execute("SELECT faixa_etaria, sexo_desc, qt_internacoes FROM vw_perfil_paciente")
+    by_key = {(faixa, sexo): int(qt) for faixa, sexo, qt in cur.fetchall()}
+    labels = ["Menor de 1 ano", "1 a 2 anos", "Maior de 2 anos", "Não informado"]
+    masc = [by_key.get((l, "Masculino"), 0) for l in labels]
+    fem = [by_key.get((l, "Feminino"), 0) for l in labels]
+    if sum(masc) + sum(fem) == 0:
+        raise ValueError("sem dados de perfil")
+    return {"labels": labels, "masculino": masc, "feminino": fem}
+
+
+def fetch_cost_share(cur):
+    cur.execute(
+        """
+        SELECT semana, soma_val_tot, soma_val_tot_bronq
+        FROM vw_casos_semanais
+        ORDER BY semana DESC FETCH FIRST 4 ROWS ONLY
+        """
+    )
+    rows = list(reversed(cur.fetchall()))
+    if not rows:
+        raise ValueError("sem linhas")
+    labels, pct = [], []
+    for semana, total, bronq in rows:
+        if not total:
+            continue
+        labels.append(f"{semana.day:02d}/{semana.month:02d}/{semana.year}")
+        pct.append(round(float(bronq or 0) / float(total) * 100, 3))
+    if not labels:
+        raise ValueError("sem semanas com custo total")
+    return {"labels": labels, "pct": pct}
+
+
 def fetch_alert(cur):
     cur.execute(
         """
@@ -284,6 +452,14 @@ def main():
     alert = safe("status de alerta (VW_ALERTA_RISCO_SEMANAL)", lambda: fetch_alert(cur))
     zones = safe("zonas de SP (VW_HOSPITAL_DESEMPENHO)", lambda: fetch_zones(cur))
     hospitals = safe("hospitais de SP (VW_HOSPITAL_DESEMPENHO)", lambda: fetch_hospitals(cur))
+    daily_climate = safe("clima diário (VW_CASOS_DIARIOS)", lambda: fetch_daily_climate(cur))
+    weekly_alert_trend = safe("tendência semanal com alerta (VW_CASOS_SEMANAIS + VW_ALERTA_RISCO_SEMANAL)", lambda: fetch_weekly_alert_trend(cur))
+    seasonality = safe("sazonalidade mensal (VW_SAZONALIDADE_MENSAL)", lambda: fetch_seasonality(cur))
+    diagnostic_monthly = safe("comparativo de diagnósticos (VW_COMPARATIVO_DIAGNOSTICO_MENSAL)", lambda: fetch_diagnostic_monthly(cur))
+    hospital_ranking = safe("ranking de hospitais (VW_HOSPITAL_DESEMPENHO)", lambda: fetch_hospital_ranking(cur))
+    bairro_concentration = safe("concentração por bairro (VW_HOSPITAL_DESEMPENHO)", lambda: fetch_bairro_concentration(cur))
+    patient_profile = safe("perfil de paciente (VW_PERFIL_PACIENTE)", lambda: fetch_patient_profile(cur))
+    cost_share = safe("custo bronquiolite vs. total (VW_CASOS_SEMANAIS)", lambda: fetch_cost_share(cur))
 
     cur.close()
     connection.close()
@@ -313,6 +489,22 @@ def main():
     }
     if hospitals:
         dataset["hospitals"] = hospitals
+    if daily_climate:
+        dataset["daily_climate"] = daily_climate
+    if weekly_alert_trend:
+        dataset["weekly_alert_trend"] = weekly_alert_trend
+    if seasonality:
+        dataset["seasonality"] = seasonality
+    if diagnostic_monthly:
+        dataset["diagnostic_monthly"] = diagnostic_monthly
+    if hospital_ranking:
+        dataset["hospital_ranking"] = hospital_ranking
+    if bairro_concentration:
+        dataset["bairro_concentration"] = bairro_concentration
+    if patient_profile:
+        dataset["patient_profile"] = patient_profile
+    if cost_share:
+        dataset["cost_share"] = cost_share
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUT_PATH.write_text(json.dumps(dataset, ensure_ascii=False, indent=2), encoding="utf-8")
