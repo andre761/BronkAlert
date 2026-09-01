@@ -1,17 +1,17 @@
 """
 BronqAlert — exporta os dados reais do Oracle (schema FIAP_OCI_GOLD) direto para
-data/gold/bronquiolite.json, que o site já sabe ler sozinho (sem precisar de
-Netlify Function, sem servidor nenhum).
+data/gold/bronquiolite.json, que o site já sabe ler sozinho.
 
-Rode ISSO NA SUA MÁQUINA sempre que quiser atualizar os números do site com
-dados novos do banco. A senha é digitada aqui (oculta, nunca enviada a lugar
-nenhum) e o resultado é só o JSON com números — sem nenhuma credencial dentro.
+Rode ISSO NA SUA MÁQUINA sempre que quiser atualizar os números do site. A senha
+é digitada aqui (oculta) e nunca sai da sua máquina.
 
 Uso:
     pip install oracledb
     python scripts\\export_gold_to_json.py
 
-Depois é só commitar e dar push no data/gold/bronquiolite.json.
+No final, também imprime o conteúdo bruto de VW_PERFIL_PACIENTE e
+VW_HOSPITAL_DESEMPENHO (faixa etária e zona ainda não mapeadas) — cole essa
+parte de volta na conversa para eu terminar de conectar essas duas partes.
 """
 import getpass
 import json
@@ -77,6 +77,22 @@ def fetch_monthly(connection):
     return labels, values
 
 
+def dump_view(connection, view_name, limit=30):
+    """Mostra a estrutura crua de uma view — usado pra descobrir colunas de faixa
+    etária/zona, que ainda não sabemos o nome certo."""
+    print(f"\n=== {view_name} (até {limit} linhas) ===", file=sys.stderr)
+    try:
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT * FROM {view_name} FETCH FIRST {limit} ROWS ONLY")
+        cols = [d[0] for d in cursor.description]
+        print("Colunas:", cols, file=sys.stderr)
+        for row in cursor.fetchall():
+            print(" ", row, file=sys.stderr)
+        cursor.close()
+    except Exception as e:
+        print(f"[erro ao consultar {view_name}: {e}]", file=sys.stderr)
+
+
 def main():
     print("Conectando ao Oracle...", file=sys.stderr)
     connection = connect()
@@ -89,6 +105,11 @@ def main():
         print(f"[erro] não consegui buscar a evolução mensal: {e}", file=sys.stderr)
         monthly_labels, monthly_casos = [], []
 
+    # Ainda não sabemos a estrutura exata dessas duas — mostra o conteúdo cru
+    # pra eu terminar de mapear faixa etária e zona na próxima rodada.
+    dump_view(connection, "vw_perfil_paciente")
+    dump_view(connection, "vw_hospital_desempenho")
+
     connection.close()
 
     dataset = {
@@ -96,8 +117,7 @@ def main():
         "source": "Oracle Autonomous Database (FIAP_OCI_GOLD) — exportado manualmente",
         "monthly_labels": monthly_labels or [f"{i:02d}/2026" for i in range(3, 9)],
         "monthly_casos": monthly_casos or [118, 165, 245, 312, 288, 214],
-        # Faixa etária e zona ainda não mapeadas no Gold — seguem simuladas por
-        # enquanto (não afeta a evolução mensal, que já é 100% real acima).
+        # Faixa etária e zona ainda seguem simuladas até mapear as views acima.
         "age_data": FALLBACK_AGE,
         "sp_zones": FALLBACK_ZONES,
         "used_fallback": not monthly_casos,
@@ -106,7 +126,7 @@ def main():
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUT_PATH.write_text(json.dumps(dataset, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\n[ok] Gravado em {OUT_PATH}")
-    print("Agora é só: git add data/gold/bronquiolite.json && git commit -m \"dados reais\" && git push")
+    print("\nCole a partir de '=== VW_PERFIL_PACIENTE' até o final na conversa, por favor.")
 
 
 if __name__ == "__main__":

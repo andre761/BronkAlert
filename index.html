@@ -217,18 +217,18 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 <aside class="sidebar">
   <div class="brand"><img src="logo.png" alt="BronqAlert"></div>
   <nav class="nav">
-    <button class="active" onclick="showPage('dashboard',this)"><span>⌂</span>Dashboard</button>
-    <button onclick="showPage('bronquiolite',this)"><span>🫁</span>Bronquiolite</button>
-    <button onclick="showPage('monitoramento',this)"><span>◉</span>Monitoramento</button>
-    <button onclick="showPage('avaliacao',this)"><span>✚</span>Avaliação</button>
-    <button onclick="showPage('historico',this)"><span>▤</span>Histórico</button>
-    <button onclick="showPage('perfil',this)"><span>⚙</span>Perfil</button>
+    <button id="navMonitoramento" class="active" onclick="showPage('monitoramento',this)"><span>◉</span>Monitoramento</button>
+    <button id="navBronquiolite" onclick="showPage('bronquiolite',this)"><span>🫁</span>Bronquiolite</button>
+    <button id="navDashboard" onclick="showPage('dashboard',this)"><span>⌂</span>Dashboard</button>
+    <button id="navAvaliacao" onclick="showPage('avaliacao',this)"><span>✚</span>Avaliação</button>
+    <button id="navHistorico" onclick="showPage('historico',this)"><span>▤</span>Histórico</button>
+    <button id="navPerfil" onclick="showPage('perfil',this)"><span>⚙</span>Perfil</button>
   </nav>
   <div class="tag">Protótipo demonstrativo<br>Dados simulados</div>
 </aside>
 
 <main class="main">
-<section id="dashboard" class="page active">
+<section id="dashboard" class="page">
   <div class="top"><div><h1>Olá, <span id="greetName">André</span> 👋</h1><div class="sub">Acompanhe seus indicadores respiratórios em tempo real.</div></div>
   <div class="user"><div><b>Paciente</b><div class="sub">Monitoramento ativo</div></div><div class="avatar" id="greetAvatar">A</div></div></div>
 
@@ -347,15 +347,15 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
       <h2>Alertas recentes</h2>
       <div class="alert"><div class="dot"></div><div><b>Possível queda de saturação</b><p>Detectada às 19:42. Valor mínimo registrado: 93%.</p></div></div>
       <div class="alert" style="border-color:#28445b"><div class="dot" style="background:var(--yellow);box-shadow:0 0 12px var(--yellow)"></div><div><b>Sintomas registrados</b><p>Tosse e falta de ar informadas na última avaliação.</p></div></div>
-      <button class="action" style="width:100%;margin-top:4px" onclick="showPage('monitoramento')">Ver monitoramento</button>
+      <button class="action" style="width:100%;margin-top:4px" onclick="showPage('monitoramento',document.getElementById('navMonitoramento'))">Ver monitoramento</button>
     </div>
   </div>
 
   <div class="section"><h2>Ações rápidas</h2><div class="quick">
     <div class="card" onclick="openModal()"><div class="icon">🫁</div><b>Fazer avaliação</b><div class="small">Registrar sintomas e sinais.</div></div>
-    <div class="card" onclick="showPage('historico')"><div class="icon">📊</div><b>Ver histórico</b><div class="small">Acompanhar evolução.</div></div>
+    <div class="card" onclick="showPage('historico',document.getElementById('navHistorico'))"><div class="icon">📊</div><b>Ver histórico</b><div class="small">Acompanhar evolução.</div></div>
     <div class="card" onclick="showToast('Fluxo demonstrativo: em uma versão real, esta ação acionaria o protocolo configurado.')"><div class="icon">🚨</div><b>Protocolo de alerta</b><div class="small">Consultar orientação de emergência.</div></div>
-    <div class="card" onclick="showPage('bronquiolite',document.querySelectorAll('.nav button')[1])"><div class="icon">📖</div><b>Sobre a bronquiolite</b><div class="small">Sintomas, prevenção e cuidados.</div></div>
+    <div class="card" onclick="showPage('bronquiolite',document.getElementById('navBronquiolite'))"><div class="icon">📖</div><b>Sobre a bronquiolite</b><div class="small">Sintomas, prevenção e cuidados.</div></div>
   </div></div>
 </section>
 
@@ -415,7 +415,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
   </div>
 </section>
 
-<section id="monitoramento" class="page">
+<section id="monitoramento" class="page active">
   <div class="top"><div><h1>Monitoramento</h1><div class="sub">Acompanhamento contínuo dos indicadores.</div></div></div>
   <div class="grid">
     <div class="card"><div class="label">SpO₂</div><div class="metric" id="spo">97%</div><div class="status ok">● Conectado</div></div>
@@ -559,7 +559,7 @@ function showToast(msg){
 function saveModal(){
   const s=document.getElementById('mspo').value, r=document.getElementById('mresp').value;
   document.getElementById('spo').textContent=s+'%'; document.getElementById('resp').textContent=r;
-  closeModal(); showPage('monitoramento',document.querySelectorAll('.nav button')[2]);
+  closeModal(); showPage('monitoramento',document.getElementById('navMonitoramento'));
   showToast('Avaliação registrada no protótipo.');
 }
 function saveAssessment(){showToast('Avaliação registrada com sucesso no protótipo.');}
@@ -1058,6 +1058,10 @@ function renderLocation(loc){
     document.getElementById('authScreen').style.display='none';
     document.querySelector('.app').style.display='flex';
     applyUserToUI(user);
+    // Monitoramento é a tela inicial: chama showPage explicitamente (em vez de
+    // confiar só na classe "active" do HTML) pra garantir que os gráficos
+    // inicializem com o card já visível, com o tamanho certo.
+    showPage('monitoramento', document.getElementById('navMonitoramento'));
     locateUser(user).then(function(loc){
       renderLocation(loc);
       showAlertPopup(loc.zoneKey);
