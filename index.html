@@ -1452,6 +1452,11 @@ function monthChipLabel(m){
   return (MONTH_ABBR[mm-1]||m)+'/'+String(parts[1]).slice(2);
 }
 function applyMonthFilter(){
+  // SP_ZONES/HOSPITALS (mapa) continuam simulados/ilustrativos — o círculo no
+  // mapa tem raio e cor calibrados pra números pequenos (0-25), então em vez
+  // de bater com o total real da cidade (dezenas de milhares), só encolhem/
+  // crescem pela fração do período marcado. É por isso que o mapa mantém o
+  // selo "Dados simulados" separado dos outros.
   const frac=selectedFraction();
   if(SP_ZONES_BASE){
     Object.keys(SP_ZONES).forEach(function(k){
@@ -1465,15 +1470,19 @@ function applyMonthFilter(){
       if(base) h.casos=Math.round(base.casos*frac);
     });
   }
-  if(AGE_DATA_BASE){
-    AGE_DATA.values=AGE_DATA_BASE.values.map(function(v){ return Math.round(v*frac); });
-  }
-  // Concentração por bairro e ranking de hospitais: em vez de escalar cada
-  // item pela mesma fração (o que deixaria a soma alguns casos torta por
-  // arredondamento), redistribui a proporção de cada item para que a SOMA
-  // bata exatamente com o total real selecionado — é literalmente a soma da
-  // evolução mensal replicada aqui, só dividida proporcionalmente.
+  // Faixa etária, ranking de hospitais e concentração por bairro são "Dados
+  // reais" com uma base real amarrada a um total específico (a faixa etária,
+  // por exemplo, é o formato real de 01/2025 — 721 casos) — por isso usam
+  // scaleToTotal() contra o total REAL do período selecionado em vez de uma
+  // fração simples: multiplicar pela fração do ano inteiro deixaria esses
+  // números presos ao total do mês de origem em vez de acompanhar o total
+  // do período marcado no filtro. scaleToTotal usa só a FORMA (proporção) de
+  // cada base e redistribui pro total selecionado, então a soma sempre bate
+  // com o que o resumo do filtro mostra.
   const periodTotal=selectedPeriodTotal();
+  if(AGE_DATA_BASE){
+    AGE_DATA.values=scaleToTotal(AGE_DATA_BASE.values,periodTotal);
+  }
   if(BAIRRO_CONCENTRATION_BASE){
     const scaled=scaleToTotal(BAIRRO_CONCENTRATION_BASE,periodTotal);
     BAIRRO_CONCENTRATION.forEach(function(b,i){ b.casos=scaled[i]; });
@@ -1522,7 +1531,7 @@ function renderMonthFilterUI(){
   const pct=Math.round(selectedFraction()*100);
   const summary=allSelected
     ? 'Mostrando o período completo disponível ('+total+' casos de bronquiolite).'
-    : '🔎 <b>'+total+' casos</b> nos meses marcados ('+pct+'% do total do período) — estimativa proporcional para o mapa, a faixa etária, o ranking de hospitais e a concentração por bairro, calculada a partir da evolução mensal real; não é um valor direto do banco por mês.';
+    : '🔎 <b>'+total+' casos</b> nos meses marcados ('+pct+'% do total do período) — a faixa etária, o ranking de hospitais e a concentração por bairro somam exatamente esse total (estimativa proporcional, não um valor direto do banco por mês); as zonas do mapa continuam simuladas e só encolhem/crescem na mesma proporção, sem prometer bater com esse número.';
   ['filterSummaryMap','filterSummaryAge','filterSummaryHosp','filterSummaryBairro'].forEach(function(id){
     const el=document.getElementById(id);
     if(el) el.innerHTML=summary;
@@ -1652,7 +1661,7 @@ async function loadRealData(){
     if(d.age_data && Array.isArray(d.age_data.values) && d.age_data.values.length===AGE_DATA.values.length){
       AGE_DATA.values=d.age_data.values;
       const ageEl=document.getElementById('agePeriod');
-      if(ageEl) ageEl.textContent=d.age_data.period_label?('· dados de '+d.age_data.period_label):'';
+      if(ageEl) ageEl.textContent=d.age_data.period_label?('· formato (proporção) baseado em '+d.age_data.period_label+', escalado para o total do período'):'';
       if(Array.isArray(d.age_data.labels) && d.age_data.labels.length===AGE_DATA.labels.length){
         AGE_DATA.labels=d.age_data.labels;
       }
