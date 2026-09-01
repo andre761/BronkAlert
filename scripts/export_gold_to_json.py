@@ -338,9 +338,13 @@ def fetch_hospital_ranking(cur):
     # FETCH FIRST em vez do ROWNUM<=10 do rascunho original: ROWNUM é
     # atribuído ANTES do ORDER BY, então "WHERE ROWNUM<=10 ORDER BY ..."
     # ordena só 10 linhas arbitrárias, não as 10 de maior volume.
+    # Só nome, bairro e internações — não temos (ainda) % de bronquiolite real
+    # por hospital, então o site não mostra mais essa coluna nem óbitos/
+    # casos-por-leito por hospital (evita number ao lado de um nome real que
+    # não é realmente daquele hospital).
     cur.execute(
         """
-        SELECT no_fantasia, no_bairro, qt_internacoes, pct_bronquiolite, qt_obitos, casos_por_leito
+        SELECT no_fantasia, no_bairro, qt_internacoes
         FROM vw_hospital_desempenho
         WHERE qt_internacoes > 0
         ORDER BY qt_internacoes DESC
@@ -355,11 +359,8 @@ def fetch_hospital_ranking(cur):
             "name": str(nome).strip(),
             "bairro": str(bairro).strip().title() if bairro else "",
             "internacoes": int(qt),
-            "pctBronq": round(float(pct), 1) if pct is not None else 0,
-            "obitos": int(obitos) if obitos is not None else 0,
-            "casosPorLeito": round(float(casos_leito), 2) if casos_leito is not None else 0,
         }
-        for nome, bairro, qt, pct, obitos, casos_leito in rows
+        for nome, bairro, qt in rows
     ]
 
 

@@ -65,5 +65,16 @@
     "note": "valor_bronq é o SOMA_VAL_TOT_BRONQ real dessas 4 semanas (R$); usado para estimar o custo mensal (casos reais do mês × custo médio real por caso), já que a view só tem R$ por semana, não por mês."
   },
 
+  "hospital_ranking": [
+    {"name": "Hospital Municipal Brasilândia", "bairro": "Brasilândia", "internacoes": 506},
+    {"name": "Hospital Geral Santa Marcelina de Itaim Paulista", "bairro": "Itaim Paulista", "internacoes": 383},
+    {"name": "Hospital Geral Henrique Altimeyer de Vila Alpina", "bairro": "Vila Alpina", "internacoes": 378},
+    {"name": "Hospital Geral do Grajaú Prof. Liberato J. A. Di Dio", "bairro": "Grajaú", "internacoes": 502},
+    {"name": "Hospital Municipal Tide Setúbal", "bairro": "São Miguel Paulista", "internacoes": 412},
+    {"name": "Hospital Municipal M'Boi Mirim", "bairro": "M'Boi Mirim", "internacoes": 797},
+    {"name": "Hospital Municipal Infantil Menino Jesus", "bairro": "Vila Buarque", "internacoes": 636},
+    {"name": "Hospital Municipal Carmem Prudente", "bairro": "—", "internacoes": 457}
+  ],
+
   "used_fallback": false
 }

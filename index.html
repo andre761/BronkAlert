@@ -563,8 +563,8 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
     <div class="sub" style="font-size:12px;margin-bottom:2px">Filtrar por mês (mesmo filtro do mapa e da faixa etária):</div>
     <div class="month-filter" id="monthFilterHosp"></div>
     <div class="filter-summary" id="filterSummaryHosp"></div>
-    <div class="table-scroll"><table id="hospRankTable"><thead><tr><th>Hospital</th><th>Bairro</th><th>Internações</th><th>% Bronquiolite</th><th>Casos de bronquiolite</th><th>Óbitos</th><th>Casos/leito</th></tr></thead><tbody></tbody></table></div>
-    <p class="sub" style="font-size:11px;margin-top:8px">"Casos de bronquiolite" é a fatia de cada hospital no total real da cidade (a soma da coluna bate com a evolução mensal) — "Internações" e "% Bronquiolite" são um perfil ilustrativo por hospital, em outra escala, até a próxima exportação trazer o volume real por hospital.</p>
+    <div class="table-scroll"><table id="hospRankTable"><thead><tr><th>Hospital</th><th>Bairro</th><th>Internações</th><th>Casos de bronquiolite</th></tr></thead><tbody></tbody></table></div>
+    <p class="sub" style="font-size:11px;margin-top:8px">"Internações" é o número real (Oracle/CNES). "Casos de bronquiolite" é uma estimativa: distribui o total real da evolução mensal entre os hospitais proporcionalmente ao volume de internação de cada um — ainda não temos o percentual de bronquiolite real por hospital para calcular isso direto.</p>
   </div>
 
   <div class="section card">
@@ -1114,8 +1114,8 @@ function renderHospitalRanking(){
   const tbody=document.querySelector('#hospRankTable tbody');
   if(!tbody) return;
   tbody.innerHTML=HOSPITAL_RANKING.map(function(h){
-    const casosBronq=typeof h.casosBronq==='number'?h.casosBronq:Math.round(h.internacoes*h.pctBronq/100);
-    return '<tr><td>'+h.name+'</td><td>'+h.bairro+'</td><td>'+h.internacoes+'</td><td>'+h.pctBronq+'%</td><td><b>'+casosBronq+'</b></td><td>'+h.obitos+'</td><td>'+h.casosPorLeito+'</td></tr>';
+    const casosBronq=typeof h.casosBronq==='number'?h.casosBronq:0;
+    return '<tr><td>'+h.name+'</td><td>'+h.bairro+'</td><td>'+h.internacoes+'</td><td><b>'+casosBronq+'</b></td></tr>';
   }).join('');
 }
 
@@ -1420,7 +1420,9 @@ function captureFilterBase(){
   PROFILE_MASC_BASE=PROFILE_MASC.slice();
   PROFILE_FEM_BASE=PROFILE_FEM.slice();
   BAIRRO_CONCENTRATION_BASE=BAIRRO_CONCENTRATION.map(function(b){ return b.casos; });
-  HOSPITAL_RANKING_SHARE_BASE=HOSPITAL_RANKING.map(function(h){ return h.internacoes*h.pctBronq/100; });
+  // Sem % de bronquiolite real por hospital ainda, então o peso de cada um
+  // na distribuição é o próprio volume real de internação.
+  HOSPITAL_RANKING_SHARE_BASE=HOSPITAL_RANKING.map(function(h){ return h.internacoes; });
 }
 // Redistribui `values` (pesos/proporções) até somarem exatamente `total`,
 // usando o método dos maiores restos — evita que arredondamento por item
@@ -1642,15 +1644,20 @@ function formatBRL(v){
   return 'R$ '+Number(v).toLocaleString('pt-BR',{maximumFractionDigits:0});
 }
 
+// Nomes e internações reais (Oracle/CNES), na ordem que você passou. Não
+// temos, por enquanto, % de bronquiolite/óbitos/casos-por-leito reais por
+// hospital — por isso essas colunas saíram da tabela (nenhum valor
+// inventado): só "Internações" (real) e "Casos de bronquiolite" (estimado a
+// partir do total real da evolução, proporcional ao volume de internação).
 let HOSPITAL_RANKING=[
-  {name:'Hospital das Clínicas (FMUSP)',bairro:'Cerqueira César',internacoes:410,pctBronq:5.4,obitos:9,casosPorLeito:0.62},
-  {name:'Santa Casa de São Paulo',bairro:'Santa Cecília',internacoes:365,pctBronq:4.7,obitos:8,casosPorLeito:0.58},
-  {name:'Hospital São Paulo (UNIFESP)',bairro:'Vila Clementino',internacoes:298,pctBronq:4.7,obitos:6,casosPorLeito:0.51},
-  {name:'Hospital Municipal Infantil Menino Jesus',bairro:'Vila Buarque',internacoes:210,pctBronq:5.7,obitos:2,casosPorLeito:0.74},
-  {name:'Hospital Infantil Darcy Vargas',bairro:'Planalto Paulista',internacoes:187,pctBronq:5.9,obitos:1,casosPorLeito:0.69},
-  {name:'Hospital e Maternidade Santa Joana',bairro:'Paraíso',internacoes:165,pctBronq:4.8,obitos:1,casosPorLeito:0.55},
-  {name:'Hospital Israelita Albert Einstein',bairro:'Morumbi',internacoes:150,pctBronq:6.0,obitos:0,casosPorLeito:0.47},
-  {name:'Hospital Sírio-Libanês',bairro:'Bela Vista',internacoes:98,pctBronq:6.1,obitos:0,casosPorLeito:0.39}
+  {name:'Hospital Municipal Brasilândia',bairro:'Brasilândia',internacoes:506},
+  {name:'Hospital Geral Santa Marcelina de Itaim Paulista',bairro:'Itaim Paulista',internacoes:383},
+  {name:'Hospital Geral Henrique Altimeyer de Vila Alpina',bairro:'Vila Alpina',internacoes:378},
+  {name:'Hospital Geral do Grajaú Prof. Liberato J. A. Di Dio',bairro:'Grajaú',internacoes:502},
+  {name:'Hospital Municipal Tide Setúbal',bairro:'São Miguel Paulista',internacoes:412},
+  {name:"Hospital Municipal M'Boi Mirim",bairro:"M'Boi Mirim",internacoes:797},
+  {name:'Hospital Municipal Infantil Menino Jesus',bairro:'Vila Buarque',internacoes:636},
+  {name:'Hospital Municipal Carmem Prudente',bairro:'—',internacoes:457}
 ];
 
 let BAIRRO_CONCENTRATION=[
