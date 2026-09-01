@@ -604,6 +604,10 @@ const ALERT_THRESHOLDS={ VERMELHO:15 };
 
 // ---- Gráficos de Monitoramento (dados simulados) ----
 const MONTHLY_CASOS=[118,165,245,312,288,214]; // 6 meses atrás → mês atual
+// Quando dados reais chegam (loadRealData), os rótulos passam a ser os meses de
+// verdade do banco (podem não bater com "hoje", já que o Gold real tem um recorte
+// fixo de datas) — até lá, ficam null e usamos os meses calculados a partir de hoje.
+let MONTHLY_LABELS=null;
 const WEEKLY_CASOS=[112,98,84,71];             // 4 semanas atrás → semana atual
 const DAILY_CASOS=[22,20,19,17,16,15,14];      // 7 dias atrás → hoje
 const AGE_DATA={
@@ -638,10 +642,16 @@ function weekLabelsBack(n){
 }
 
 const EVO_CONFIG={
-  '7d':{values:DAILY_CASOS, labels:function(){return dayLabelsBack(DAILY_CASOS.length);}},
-  '30d':{values:WEEKLY_CASOS, labels:function(){return weekLabelsBack(WEEKLY_CASOS.length);}},
-  '3m':{values:MONTHLY_CASOS.slice(-3), labels:function(){return monthLabelsBack(3);}},
-  '6m':{values:MONTHLY_CASOS, labels:function(){return monthLabelsBack(6);}}
+  '7d':{values:function(){return DAILY_CASOS;}, labels:function(){return dayLabelsBack(DAILY_CASOS.length);}},
+  '30d':{values:function(){return WEEKLY_CASOS;}, labels:function(){return weekLabelsBack(WEEKLY_CASOS.length);}},
+  '3m':{
+    values:function(){return MONTHLY_CASOS.slice(-3);},
+    labels:function(){return MONTHLY_LABELS?MONTHLY_LABELS.slice(-3):monthLabelsBack(3);}
+  },
+  '6m':{
+    values:function(){return MONTHLY_CASOS;},
+    labels:function(){return MONTHLY_LABELS?MONTHLY_LABELS.slice(-6):monthLabelsBack(6);}
+  }
 };
 
 // Aumento/redução/estabilidade: compara o primeiro e o último ponto do período.
@@ -738,14 +748,15 @@ function initCharts(){
 function setEvoPeriod(period){
   const cfg=EVO_CONFIG[period];
   if(!cfg || !evoChart) return;
+  const values=cfg.values();
   evoChart.data.labels=cfg.labels();
-  evoChart.data.datasets[0].data=cfg.values;
+  evoChart.data.datasets[0].data=values;
   evoChart.update();
 
-  const t=trendInfo(cfg.values);
+  const t=trendInfo(values);
   const note=document.getElementById('evoTrend');
   note.className='trend-note '+t.dir;
-  const first=cfg.values[0], last=cfg.values[cfg.values.length-1];
+  const first=values[0], last=values[values.length-1];
   const pct=first>0?Math.round(((last-first)/first)*100):0;
   const sign=pct>0?'+':'';
   note.innerHTML=t.icon+' <b>'+t.text+'</b> de '+sign+pct+'% no período selecionado ('+first+' → '+last+' casos ativos).';
@@ -786,6 +797,9 @@ async function loadRealData(){
 
     if(Array.isArray(d.monthly_casos) && d.monthly_casos.length===MONTHLY_CASOS.length && d.monthly_casos.every(function(v){return typeof v==='number';})){
       MONTHLY_CASOS.splice(0,MONTHLY_CASOS.length,...d.monthly_casos);
+      if(Array.isArray(d.monthly_labels) && d.monthly_labels.length===MONTHLY_CASOS.length){
+        MONTHLY_LABELS=d.monthly_labels.slice();
+      }
     }
     if(d.age_data && Array.isArray(d.age_data.values) && d.age_data.values.length===AGE_DATA.values.length){
       AGE_DATA.values=d.age_data.values;
