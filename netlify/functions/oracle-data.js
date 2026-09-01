@@ -70,16 +70,33 @@ function stripAccents(s) {
   return out;
 }
 
+// Se a rede do Netlify/AWS não conseguir alcançar o Oracle (ex.: bloqueada por
+// uma Access Control List do Autonomous Database), a tentativa de conexão pode
+// FICAR PENDURADA em vez de falhar rápido — e o Lambda mata a função inteira
+// aos 30s (tela feia de "Invocation Failed"). Por isso corremos a conexão
+// contra um cronômetro próprio de 10s: se estourar, desistimos a tempo de
+// ainda devolver um JSON com os dados simulados de reserva.
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(label + " excedeu " + ms + "ms")), ms)),
+  ]);
+}
+
 async function getConnection() {
   if (!fs.existsSync(WALLET_DIR) || fs.readdirSync(WALLET_DIR).length === 0) {
     throw new Error("wallet não encontrado — configure secrets/wallet.enc e WALLET_DECRYPT_PASSPHRASE, e rode um novo deploy");
   }
-  return oracledb.getConnection({
-    user: process.env.ORACLE_DB_USER,
-    password: process.env.ORACLE_DB_PASSWORD,
-    connectString: process.env.ORACLE_DSN || "bronkalertdb_high",
-    configDir: WALLET_DIR,
-  });
+  return withTimeout(
+    oracledb.getConnection({
+      user: process.env.ORACLE_DB_USER,
+      password: process.env.ORACLE_DB_PASSWORD,
+      connectString: process.env.ORACLE_DSN || "bronkalertdb_high",
+      configDir: WALLET_DIR,
+    }),
+    10000,
+    "conexão com o Oracle"
+  );
 }
 
 async function fetchMonthly(connection) {
@@ -185,14 +202,18 @@ exports.handler = async function () {
   try {
     connection = await getConnection();
 
-    const outcomes = await Promise.allSettled([
-      fetchMonthly(connection),
-      fetchDaily(connection),
-      fetchWeekly(connection),
-      fetchAge(connection),
-      fetchAlert(connection),
-      fetchZones(connection),
-    ]);
+    const outcomes = await withTimeout(
+      Promise.allSettled([
+        fetchMonthly(connection),
+        fetchDaily(connection),
+        fetchWeekly(connection),
+        fetchAge(connection),
+        fetchAlert(connection),
+        fetchZones(connection),
+      ]),
+      15000,
+      "consultas ao Oracle"
+    );
     const [monthly, daily, weekly, age, alert, zones] = outcomes;
 
     if (monthly.status === "fulfilled") {
