@@ -762,6 +762,15 @@ document.getElementById('chatForm').addEventListener('submit',function(e){
   input.value='';
   askChat(text);
 });
+// Fecha o chat ao clicar fora do painel (fora do botão flutuante também,
+// senão o próprio clique que abre o chat já fecharia ele em seguida).
+document.addEventListener('click',function(e){
+  const panel=document.getElementById('chatPanel');
+  const fab=document.getElementById('chatFab');
+  if(!panel.classList.contains('show')) return;
+  if(panel.contains(e.target)||fab.contains(e.target)) return;
+  toggleChat(false);
+});
 
 function saveModal(){
   const s=document.getElementById('mspo').value, r=document.getElementById('mresp').value;
