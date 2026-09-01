@@ -817,6 +817,11 @@ function toggleNationalMap(){
 // o que conta como "alguns casos" (amarelo) e "muitos casos" (vermelho).
 // 0 caso = verde; de 1 até (VERMELHO-1) = amarelo; a partir de VERMELHO = vermelho.
 const ALERT_THRESHOLDS={ VERMELHO:15 };
+// Preenchido por loadRealData() quando a VW_ALERTA_RISCO_SEMANAL trouxer um
+// status já calculado pelo pipeline (STATUS_ALERTA) — quando existir, o pop-up
+// usa esse status real em vez de calcular pelo limite acima.
+let REAL_ALERT=null;
+const STATUS_ALERTA_MAP={NORMAL:0,ATENCAO:1,MODERADO:1,ALERTA:3,ALTO:3,CRITICO:3};
 
 // ---- Gráficos de Monitoramento (dados simulados) ----
 const MONTHLY_CASOS=[118,165,245,312,288,214]; // 6 meses atrás → mês atual
@@ -826,9 +831,11 @@ const MONTHLY_CASOS=[118,165,245,312,288,214]; // 6 meses atrás → mês atual
 let MONTHLY_LABELS=null;
 const WEEKLY_CASOS=[112,98,84,71];             // 4 semanas atrás → semana atual
 const DAILY_CASOS=[22,20,19,17,16,15,14];      // 7 dias atrás → hoje
+// Faixas etárias no formato que a VW_PERFIL_PACIENTE_MENSAL realmente fornece
+// (o banco não tem granularidade menor que "menor de 1 ano").
 const AGE_DATA={
-  labels:['0–3 meses','4–6 meses','7–12 meses','1–2 anos','Acima de 2 anos'],
-  values:[89,76,54,31,12]
+  labels:['Menor de 1 ano','1 a 2 anos','Maior de 2 anos'],
+  values:[134,41,25]
 };
 const MONTH_ABBR=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
@@ -1000,12 +1007,22 @@ const SP_CENTER=[-23.5505,-46.6333];
 let REAL_DATA=null;
 async function loadRealData(){
   let d=null;
-  // Último snapshot exportado do Oracle (schema Gold) — atualizado manualmente
-  // rodando scripts/export_gold_to_json.py sempre que quiser dados mais recentes.
+  // 1ª opção: dados em tempo real, direto do Oracle Autonomous Database (Netlify Function).
   try{
-    const res=await fetch('data/gold/bronquiolite.json',{cache:'no-store'});
+    const res=await fetch('/.netlify/functions/oracle-data',{cache:'no-store'});
     if(res.ok) d=await res.json();
-  }catch(e){ /* segue com os dados simulados já carregados por padrão */ }
+  }catch(e){ /* segue para a próxima opção */ }
+
+  // 2ª opção: último snapshot exportado manualmente (scripts/export_gold_to_json.py).
+  if(!d || d.used_fallback){
+    try{
+      const res=await fetch('data/gold/bronquiolite.json',{cache:'no-store'});
+      if(res.ok){
+        const snapshot=await res.json();
+        if(!d || (!snapshot.used_fallback && d.used_fallback)) d=snapshot;
+      }
+    }catch(e){ /* segue com os dados simulados já carregados por padrão */ }
+  }
 
   if(!d) return;
   try{
@@ -1019,6 +1036,15 @@ async function loadRealData(){
     }
     if(d.age_data && Array.isArray(d.age_data.values) && d.age_data.values.length===AGE_DATA.values.length){
       AGE_DATA.values=d.age_data.values;
+      if(Array.isArray(d.age_data.labels) && d.age_data.labels.length===AGE_DATA.labels.length){
+        AGE_DATA.labels=d.age_data.labels;
+      }
+    }
+    if(Array.isArray(d.daily_casos) && d.daily_casos.length===DAILY_CASOS.length){
+      DAILY_CASOS.splice(0,DAILY_CASOS.length,...d.daily_casos);
+    }
+    if(Array.isArray(d.weekly_casos) && d.weekly_casos.length===WEEKLY_CASOS.length){
+      WEEKLY_CASOS.splice(0,WEEKLY_CASOS.length,...d.weekly_casos);
     }
     if(d.sp_zones){
       Object.keys(SP_ZONES).forEach(function(k){
@@ -1026,6 +1052,9 @@ async function loadRealData(){
           SP_ZONES[k].casos=d.sp_zones[k].casos;
         }
       });
+    }
+    if(d.alert_status && typeof d.alert_casos==='number'){
+      REAL_ALERT={status:String(d.alert_status).toUpperCase(),casos:d.alert_casos};
     }
 
     if(!d.used_fallback){
@@ -1253,20 +1282,33 @@ function renderLocation(loc){
   }
 
   function showAlertPopup(zoneKey){
-    const zone=zoneKey?SP_ZONES[zoneKey]:null;
-    const casos=zone?zone.casos:Object.keys(SP_ZONES).reduce(function(sum,k){return sum+SP_ZONES[k].casos},0);
-    const lvl=alertLevel(casos);
     const texts={
       0:{title:'Situação normal',desc:'Situação normal: nenhum caso de bronquiolite registrado.'},
       1:{title:'Atenção',desc:'Atenção: foram registrados alguns casos de bronquiolite.'},
       3:{title:'Alerta',desc:'Alerta: alto número de casos registrados de bronquiolite.'}
     };
+    let casos, lvl, scopeText, extraNote='';
+
+    if(REAL_ALERT){
+      // Status já vem calculado pelo pipeline (VW_ALERTA_RISCO_SEMANAL.STATUS_ALERTA);
+      // se vier um valor não mapeado, cai pro cálculo pelos limites como reserva.
+      lvl=STATUS_ALERTA_MAP.hasOwnProperty(REAL_ALERT.status)?STATUS_ALERTA_MAP[REAL_ALERT.status]:alertLevel(REAL_ALERT.casos);
+      casos=REAL_ALERT.casos;
+      scopeText='São Paulo · semana atual';
+    } else {
+      const zone=zoneKey?SP_ZONES[zoneKey]:null;
+      casos=zone?zone.casos:Object.keys(SP_ZONES).reduce(function(sum,k){return sum+SP_ZONES[k].casos},0);
+      lvl=alertLevel(casos);
+      scopeText=zone?zone.name+', São Paulo':'São Paulo';
+      extraNote=zone?'':' Localização exata indisponível — exibindo o panorama da cidade.';
+    }
+
     const box=document.getElementById('alertBox');
     box.className='alertbox lvl'+lvl;
-    document.getElementById('alertScope').textContent=zone?zone.name+', São Paulo':'São Paulo';
+    document.getElementById('alertScope').textContent=scopeText;
     document.getElementById('alertTitle').textContent=texts[lvl].title;
     document.getElementById('alertCount').textContent=casos;
-    document.getElementById('alertDesc').textContent=texts[lvl].desc+(zone?'':' Localização exata indisponível — exibindo o panorama da cidade.');
+    document.getElementById('alertDesc').textContent=texts[lvl].desc+extraNote;
     document.getElementById('welcomeModal').classList.add('show');
   }
 

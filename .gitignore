@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 .env
+node_modules/
+netlify/functions/oracle-data-wallet/

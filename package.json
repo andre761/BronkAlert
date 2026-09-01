@@ -1,0 +1,10 @@
+{
+  "name": "bronqalert",
+  "private": true,
+  "version": "1.0.0",
+  "description": "BronqAlert — dashboard estático + Netlify Function para dados reais do Oracle Autonomous Database (FIAP_OCI_GOLD)",
+  "dependencies": {
+    "oracledb": "^6.5.1",
+    "adm-zip": "^0.5.16"
+  }
+}
