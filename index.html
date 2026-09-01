@@ -559,6 +559,9 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
   <div class="section card">
     <h2>🏥 Ranking de hospitais</h2>
     <div class="sub" style="font-size:13px;margin-bottom:6px">Top hospitais por volume de internação, com participação da bronquiolite · <span class="pill real" id="hospRankDataPill" title="Total de casos de bronquiolite somado entre os hospitais bate com a evolução mensal real (Oracle Cloud); a divisão por hospital é uma estimativa proporcional.">Dados reais (Oracle Cloud)</span></div>
+    <div class="sub" style="font-size:12px;margin-bottom:2px">Filtrar por mês (mesmo filtro do mapa e da faixa etária):</div>
+    <div class="month-filter" id="monthFilterHosp"></div>
+    <div class="filter-summary" id="filterSummaryHosp"></div>
     <div class="table-scroll"><table id="hospRankTable"><thead><tr><th>Hospital</th><th>Bairro</th><th>Internações</th><th>% Bronquiolite</th><th>Casos de bronquiolite</th><th>Óbitos</th><th>Casos/leito</th></tr></thead><tbody></tbody></table></div>
     <p class="sub" style="font-size:11px;margin-top:8px">"Casos de bronquiolite" é a fatia de cada hospital no total real da cidade (a soma da coluna bate com a evolução mensal) — "Internações" e "% Bronquiolite" são um perfil ilustrativo por hospital, em outra escala, até a próxima exportação trazer o volume real por hospital.</p>
   </div>
@@ -566,6 +569,9 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
   <div class="section card">
     <h2>📍 Concentração por bairro</h2>
     <div class="sub" style="font-size:13px;margin-bottom:6px">Internações por bronquiolite somadas por bairro · <span class="pill real" id="bairroDataPill" title="Soma dos bairros bate com o total real da evolução mensal (Oracle Cloud); a divisão por bairro é uma estimativa proporcional.">Dados reais (Oracle Cloud)</span></div>
+    <div class="sub" style="font-size:12px;margin-bottom:2px">Filtrar por mês (mesmo filtro do mapa e da faixa etária):</div>
+    <div class="month-filter" id="monthFilterBairro"></div>
+    <div class="filter-summary" id="filterSummaryBairro"></div>
     <div class="chart-wrap"><canvas id="bairroChart"></canvas></div>
   </div>
 
@@ -1508,7 +1514,7 @@ function renderMonthFilterUI(){
     const active=MONTH_FILTER.has(l);
     return '<button type="button" class="month-chip'+(active?' active':'')+'" data-month="'+l.replace(/"/g,'')+'">'+monthChipLabel(l)+'</button>';
   }).join('');
-  ['monthFilterMap','monthFilterAge'].forEach(function(id){
+  ['monthFilterMap','monthFilterAge','monthFilterHosp','monthFilterBairro'].forEach(function(id){
     const el=document.getElementById(id);
     if(el) el.innerHTML=html;
   });
@@ -1516,14 +1522,14 @@ function renderMonthFilterUI(){
   const pct=Math.round(selectedFraction()*100);
   const summary=allSelected
     ? 'Mostrando o período completo disponível ('+total+' casos de bronquiolite).'
-    : '🔎 <b>'+total+' casos</b> nos meses marcados ('+pct+'% do total do período) — estimativa proporcional para o mapa e a faixa etária, calculada a partir da evolução mensal real; não é um valor direto do banco por mês.';
-  ['filterSummaryMap','filterSummaryAge'].forEach(function(id){
+    : '🔎 <b>'+total+' casos</b> nos meses marcados ('+pct+'% do total do período) — estimativa proporcional para o mapa, a faixa etária, o ranking de hospitais e a concentração por bairro, calculada a partir da evolução mensal real; não é um valor direto do banco por mês.';
+  ['filterSummaryMap','filterSummaryAge','filterSummaryHosp','filterSummaryBairro'].forEach(function(id){
     const el=document.getElementById(id);
     if(el) el.innerHTML=summary;
   });
 }
 function initMonthFilterHandlers(){
-  ['monthFilterMap','monthFilterAge'].forEach(function(id){
+  ['monthFilterMap','monthFilterAge','monthFilterHosp','monthFilterBairro'].forEach(function(id){
     const el=document.getElementById(id);
     if(!el || el.dataset.bound) return;
     el.dataset.bound='1';
