@@ -773,19 +773,12 @@ const SP_CENTER=[-23.5505,-46.6333];
 let REAL_DATA=null;
 async function loadRealData(){
   let d=null;
-  // 1ª opção: dados em tempo real, direto do Oracle Autonomous Database (Netlify Function).
+  // Último snapshot exportado do Oracle (schema Gold) — atualizado manualmente
+  // rodando scripts/export_gold_to_json.py sempre que quiser dados mais recentes.
   try{
-    const res=await fetch('/.netlify/functions/oracle-data',{cache:'no-store'});
+    const res=await fetch('data/gold/bronquiolite.json',{cache:'no-store'});
     if(res.ok) d=await res.json();
-  }catch(e){ /* segue para a próxima opção */ }
-
-  // 2ª opção: último snapshot gerado pela automação do GitHub Actions (DATASUS/INMET).
-  if(!d){
-    try{
-      const res=await fetch('data/gold/bronquiolite.json',{cache:'no-store'});
-      if(res.ok) d=await res.json();
-    }catch(e){ /* segue com os dados simulados já carregados por padrão */ }
-  }
+  }catch(e){ /* segue com os dados simulados já carregados por padrão */ }
 
   if(!d) return;
   try{
