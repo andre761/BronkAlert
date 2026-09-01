@@ -549,13 +549,14 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 
   <div class="section card">
     <h2>🏥 Ranking de hospitais</h2>
-    <div class="sub" style="font-size:13px;margin-bottom:6px">Top hospitais por volume de internação, com participação da bronquiolite · <span class="pill" id="hospRankDataPill">Dados simulados</span></div>
-    <div class="table-scroll"><table id="hospRankTable"><thead><tr><th>Hospital</th><th>Bairro</th><th>Internações</th><th>% Bronquiolite</th><th>Óbitos</th><th>Casos/leito</th></tr></thead><tbody></tbody></table></div>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Top hospitais por volume de internação, com participação da bronquiolite · <span class="pill real" id="hospRankDataPill" title="Total de casos de bronquiolite somado entre os hospitais bate com a evolução mensal real (Oracle Cloud); a divisão por hospital é uma estimativa proporcional.">Dados reais (Oracle Cloud)</span></div>
+    <div class="table-scroll"><table id="hospRankTable"><thead><tr><th>Hospital</th><th>Bairro</th><th>Internações</th><th>% Bronquiolite</th><th>Casos de bronquiolite</th><th>Óbitos</th><th>Casos/leito</th></tr></thead><tbody></tbody></table></div>
+    <p class="sub" style="font-size:11px;margin-top:8px">"Casos de bronquiolite" é a fatia de cada hospital no total real da cidade (a soma da coluna bate com a evolução mensal) — "Internações" e "% Bronquiolite" são um perfil ilustrativo por hospital, em outra escala, até a próxima exportação trazer o volume real por hospital.</p>
   </div>
 
   <div class="section card">
     <h2>📍 Concentração por bairro</h2>
-    <div class="sub" style="font-size:13px;margin-bottom:6px">Internações por bronquiolite somadas por bairro · <span class="pill" id="bairroDataPill">Dados simulados</span></div>
+    <div class="sub" style="font-size:13px;margin-bottom:6px">Internações por bronquiolite somadas por bairro · <span class="pill real" id="bairroDataPill" title="Soma dos bairros bate com o total real da evolução mensal (Oracle Cloud); a divisão por bairro é uma estimativa proporcional.">Dados reais (Oracle Cloud)</span></div>
     <div class="chart-wrap"><canvas id="bairroChart"></canvas></div>
   </div>
 
@@ -1070,7 +1071,8 @@ function renderHospitalRanking(){
   const tbody=document.querySelector('#hospRankTable tbody');
   if(!tbody) return;
   tbody.innerHTML=HOSPITAL_RANKING.map(function(h){
-    return '<tr><td>'+h.name+'</td><td>'+h.bairro+'</td><td>'+h.internacoes+'</td><td>'+h.pctBronq+'%</td><td>'+h.obitos+'</td><td>'+h.casosPorLeito+'</td></tr>';
+    const casosBronq=typeof h.casosBronq==='number'?h.casosBronq:Math.round(h.internacoes*h.pctBronq/100);
+    return '<tr><td>'+h.name+'</td><td>'+h.bairro+'</td><td>'+h.internacoes+'</td><td>'+h.pctBronq+'%</td><td><b>'+casosBronq+'</b></td><td>'+h.obitos+'</td><td>'+h.casosPorLeito+'</td></tr>';
   }).join('');
 }
 
@@ -1254,11 +1256,31 @@ let HOSPITALS=[
 // que É real). O resultado é uma ESTIMATIVA proporcional, deixada clara na
 // tela — não um valor direto do banco por mês.
 let SP_ZONES_BASE=null, HOSPITALS_BASE=null, AGE_DATA_BASE=null;
+let BAIRRO_CONCENTRATION_BASE=null, HOSPITAL_RANKING_SHARE_BASE=null;
 function captureFilterBase(){
   SP_ZONES_BASE={};
   Object.keys(SP_ZONES).forEach(function(k){ SP_ZONES_BASE[k]={casos:SP_ZONES[k].casos}; });
   HOSPITALS_BASE=HOSPITALS.map(function(h){ return {casos:h.casos}; });
   AGE_DATA_BASE={values:AGE_DATA.values.slice()};
+  BAIRRO_CONCENTRATION_BASE=BAIRRO_CONCENTRATION.map(function(b){ return b.casos; });
+  HOSPITAL_RANKING_SHARE_BASE=HOSPITAL_RANKING.map(function(h){ return h.internacoes*h.pctBronq/100; });
+}
+// Redistribui `values` (pesos/proporções) até somarem exatamente `total`,
+// usando o método dos maiores restos — evita que arredondamento por item
+// deixe a soma alguns casos a menos/a mais do total real.
+function scaleToTotal(values,total){
+  total=Math.round(total);
+  const sum=values.reduce(function(a,b){return a+b;},0);
+  if(sum<=0 || total<=0) return values.map(function(){return 0;});
+  const raw=values.map(function(v){return v/sum*total;});
+  const floored=raw.map(Math.floor);
+  const used=floored.reduce(function(a,b){return a+b;},0);
+  const remainder=total-used;
+  const order=raw.map(function(v,i){return {i:i,frac:v-Math.floor(v)};}).sort(function(a,b){return b.frac-a.frac;});
+  for(let k=0;k<remainder && k<order.length;k++){
+    floored[order[k].i]+=1;
+  }
+  return floored;
 }
 function getMonthLabels(){
   return MONTHLY_LABELS||monthLabelsBack(MONTHLY_CASOS.length);
@@ -1307,6 +1329,23 @@ function applyMonthFilter(){
   if(AGE_DATA_BASE){
     AGE_DATA.values=AGE_DATA_BASE.values.map(function(v){ return Math.round(v*frac); });
   }
+  // Concentração por bairro e ranking de hospitais: em vez de escalar cada
+  // item pela mesma fração (o que deixaria a soma alguns casos torta por
+  // arredondamento), redistribui a proporção de cada item para que a SOMA
+  // bata exatamente com o total real selecionado — é literalmente a soma da
+  // evolução mensal replicada aqui, só dividida proporcionalmente.
+  const periodTotal=selectedPeriodTotal();
+  if(BAIRRO_CONCENTRATION_BASE){
+    const scaled=scaleToTotal(BAIRRO_CONCENTRATION_BASE,periodTotal);
+    BAIRRO_CONCENTRATION.forEach(function(b,i){ b.casos=scaled[i]; });
+  }
+  if(HOSPITAL_RANKING_SHARE_BASE){
+    // "Internações" e "% Bronquiolite" continuam sendo o perfil ilustrativo
+    // de cada hospital (escala própria, não ligada ao total da cidade) — só
+    // "Casos de bronquiolite" é recalculado para bater com o total real.
+    const scaled=scaleToTotal(HOSPITAL_RANKING_SHARE_BASE,periodTotal);
+    HOSPITAL_RANKING.forEach(function(h,i){ h.casosBronq=scaled[i]; });
+  }
   renderMonthFilterUI();
   if(window.__lastLoc) renderLocation(window.__lastLoc);
   if(typeof ageChart!=='undefined' && ageChart){
@@ -1315,6 +1354,12 @@ function applyMonthFilter(){
     ageChart.update();
     updateAgeSummary();
   }
+  if(typeof bairroChart!=='undefined' && bairroChart){
+    bairroChart.data.labels=BAIRRO_CONCENTRATION.map(function(b){return b.bairro;});
+    bairroChart.data.datasets[0].data=BAIRRO_CONCENTRATION.map(function(b){return b.casos;});
+    bairroChart.update();
+  }
+  renderHospitalRanking();
 }
 function updateAgeSummary(){
   const ageSummary=document.getElementById('ageSummary');
@@ -1363,10 +1408,6 @@ function initMonthFilterHandlers(){
     });
   });
 }
-captureFilterBase();
-resetMonthFilterToAll();
-initMonthFilterHandlers();
-renderMonthFilterUI();
 
 // ---- Indicadores extras de Monitoramento (dados simulados até o snapshot
 // trazer as chaves reais correspondentes — ver loadRealData) ----
@@ -1413,6 +1454,11 @@ let BAIRRO_CONCENTRATION=[
   {bairro:'Planalto Paulista',casos:11},{bairro:'Paraíso',casos:8},
   {bairro:'Morumbi',casos:9},{bairro:'Bela Vista',casos:6}
 ];
+
+captureFilterBase();
+resetMonthFilterToAll();
+initMonthFilterHandlers();
+applyMonthFilter();
 
 // Carrega dados reais (DATASUS/CNES/INMET), gerados pela automação do GitHub Actions
 // em data/gold/bronquiolite.json. Se o arquivo não existir ou a busca real tiver
@@ -1587,8 +1633,15 @@ async function loadRealData(){
       if(diagReal) markReal('diagDataPill');
       if(profileReal) markReal('profileDataPill');
       if(costReal) markReal('costDataPill');
-      if(hospRankReal) markReal('hospRankDataPill');
-      if(bairroReal) markReal('bairroDataPill');
+      // hospRankDataPill/bairroDataPill já nascem marcados como reais no HTML
+      // (o total bate com a evolução mensal real) — só troca o texto do pill
+      // se o snapshot algum dia trouxer os itens exatos por hospital/bairro.
+      if(hospRankReal){
+        document.getElementById('hospRankDataPill').title='Fonte: '+d.source+' · atualizado em '+d.generated_at;
+      }
+      if(bairroReal){
+        document.getElementById('bairroDataPill').title='Fonte: '+d.source+' · atualizado em '+d.generated_at;
+      }
     }
 
     // A "base" do filtro por mês precisa refletir os números reais recém-
@@ -1597,24 +1650,15 @@ async function loadRealData(){
     // meses" (estado neutro, sem distorcer nada por padrão).
     captureFilterBase();
     resetMonthFilterToAll();
-    renderMonthFilterUI();
+    // applyMonthFilter() já cobre SP_ZONES/HOSPITALS/AGE_DATA/BAIRRO_CONCENTRATION/
+    // HOSPITAL_RANKING (recalcula tudo com base no total real) e redesenha o
+    // mapa, o gráfico de idade, o de bairro e a tabela de hospitais.
+    applyMonthFilter();
 
     // Caso os gráficos/mapa já tenham sido desenhados antes desta busca terminar, atualiza de novo.
     if(typeof evoChart!=='undefined' && evoChart){
       const activeBtn=document.querySelector('.period-tab.active');
       setEvoPeriod(activeBtn?activeBtn.dataset.period:'3m');
-    }
-    if(typeof ageChart!=='undefined' && ageChart){
-      ageChart.data.labels=AGE_DATA.labels;
-      ageChart.data.datasets[0].data=AGE_DATA.values;
-      ageChart.update();
-      const ageSummary=document.getElementById('ageSummary');
-      if(ageSummary){
-        ageSummary.innerHTML=AGE_DATA.labels.map(function(l,i){return '<span><b>'+AGE_DATA.values[i]+'</b> '+l+'</span>';}).join('');
-      }
-    }
-    if(window.__lastLoc){
-      renderLocation(window.__lastLoc);
     }
     if(typeof dailyClimateChart!=='undefined' && dailyClimateChart){
       dailyClimateChart.data.labels=DAILY_LABELS||dayLabelsBack(DAILY_CASOS.length);
@@ -1653,12 +1697,6 @@ async function loadRealData(){
       costChart.data.datasets[0].data=COST_PCT;
       costChart.update();
     }
-    if(typeof bairroChart!=='undefined' && bairroChart){
-      bairroChart.data.labels=BAIRRO_CONCENTRATION.map(function(b){return b.bairro;});
-      bairroChart.data.datasets[0].data=BAIRRO_CONCENTRATION.map(function(b){return b.casos;});
-      bairroChart.update();
-    }
-    renderHospitalRanking();
   }catch(e){
     console.warn('Dados reais indisponíveis, mantendo dados simulados.',e);
   }
