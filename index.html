@@ -262,6 +262,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
     <button id="navBronquiolite" onclick="showPage('bronquiolite',this)"><span>🫁</span>Bronquiolite</button>
     <button id="navDashboard" onclick="showPage('dashboard',this)"><span>⌂</span>Dashboard</button>
     <button id="navAvaliacao" onclick="showPage('avaliacao',this)"><span>✚</span>Avaliação</button>
+    <button id="navLinguagem" onclick="showPage('linguagem',this)"><span>💬</span>Linguagem natural</button>
     <button id="navPerfil" onclick="showPage('perfil',this)"><span>⚙</span>Perfil</button>
   </nav>
   <div class="tag">Protótipo demonstrativo<br>Dados simulados</div>
@@ -608,6 +609,22 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
     <label>Chiado no peito?</label><select><option>Não</option><option>Sim</option></select>
     <label>Observações</label><input placeholder="Descreva outros sintomas ou observações">
     <button class="action" onclick="saveAssessment()">Registrar avaliação</button>
+  </div>
+</section>
+
+<section id="linguagem" class="page">
+  <div class="top"><div><h1>💬 Linguagem natural</h1><div class="sub">Pergunte em português direto para o banco (Oracle Select AI) e receba a resposta com dados reais.</div></div></div>
+  <div class="section card" style="max-width:640px;text-align:center;padding:44px 32px">
+    <div style="font-size:44px;margin-bottom:6px">💬</div>
+    <h2 style="margin-bottom:8px">Select AI do BronKAlert</h2>
+    <p class="sub" style="font-size:14px;line-height:1.6;margin-bottom:24px">
+      Ligado direto no mesmo banco (schema <b>GOLD_BKA</b>) que alimenta o resto do site — pergunte em português (ex.: "quantos casos de bronquiolite tivemos em abril?") e a resposta sai consultando os mesmos dados reais mostrados nos outros gráficos.
+    </p>
+    <a class="action" style="display:inline-block;padding:14px 28px;text-decoration:none" href="https://g5e367874a1cb1d-bronkalertai.adb.sa-saopaulo-1.oraclecloudapps.com/ords/r/gold_bka/bronkalert-select-ai/home?session=300938074666776" target="_blank" rel="noopener">Abrir o Select AI ↗</a>
+    <p class="sub" style="font-size:11px;margin-top:22px;line-height:1.5">
+      Abre numa aba nova em vez de aparecer aqui dentro: o Oracle Cloud bloqueia a incorporação desse app em outros domínios por segurança (testamos — a tela ficava em branco). O visual de lá é o tema padrão do Oracle APEX, não dá pra deixar com a cara do BronqAlert por ser outro domínio.<br><br>
+      O link tem um "session=" específico de quem o copiou — se parar de funcionar depois de um tempo, a sessão expirou e é preciso gerar um link novo direto no APEX.
+    </p>
   </div>
 </section>
 
