@@ -50,6 +50,35 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @media(max-width:560px){.toast{bottom:18px;padding:12px 18px;font-size:13px}}
 
+/* BronkBot — assistente de chat */
+.chat-fab{position:fixed;right:24px;bottom:24px;width:58px;height:58px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--brand-red),var(--brand-red2));color:#fff;font-size:24px;cursor:pointer;box-shadow:0 12px 30px rgba(216,56,40,.45);z-index:70;display:flex;align-items:center;justify-content:center}
+.chat-fab:hover{filter:brightness(1.08)}
+.chat-fab-dot{position:absolute;top:6px;right:6px;width:11px;height:11px;border-radius:50%;background:var(--green);border:2px solid #04101f;display:none}
+.chat-fab-dot.show{display:block}
+.chat-panel{position:fixed;right:24px;bottom:94px;width:360px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 140px);background:#0b1c33;border:1px solid var(--line);border-radius:18px;box-shadow:0 25px 60px rgba(0,0,0,.5);z-index:70;display:flex;flex-direction:column;overflow:hidden;opacity:0;transform:translateY(16px) scale(.97);pointer-events:none;transition:opacity .2s ease,transform .2s ease}
+.chat-panel.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+.chat-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);background:#08172b;flex-shrink:0}
+.chat-header-logo{width:32px;height:32px;object-fit:cover;object-position:left;border-radius:6px}
+.chat-header-text{flex:1;min-width:0}
+.chat-header b{font-size:14px}
+.chat-status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.chat-status i{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+.chat-close{background:none;border:0;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px}
+.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.chat-msg{max-width:85%;padding:10px 13px;border-radius:14px;font-size:13px;line-height:1.5}
+.chat-msg.bot{align-self:flex-start;background:#152a44;color:var(--text);border-bottom-left-radius:4px}
+.chat-msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--brand-red),var(--brand-red2));color:#fff;border-bottom-right-radius:4px}
+.chat-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;flex-shrink:0}
+.chat-chip{background:#152a44;border:1px solid var(--line);color:var(--text);font-size:11.5px;padding:7px 11px;border-radius:999px;cursor:pointer;text-align:left}
+.chat-chip:hover{border-color:var(--brand-red)}
+.chat-input-row{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);flex-shrink:0}
+.chat-input-row input{margin:0;flex:1}
+.chat-send{background:linear-gradient(135deg,var(--brand-red),var(--brand-red2));border:0;color:#fff;width:40px;border-radius:10px;cursor:pointer;font-size:15px;flex-shrink:0}
+@media(max-width:560px){
+  .chat-panel{right:12px;left:12px;width:auto;bottom:88px;height:min(520px,70vh)}
+  .chat-fab{right:16px;bottom:16px}
+}
+
 /* Autenticação */
 .auth-screen{position:fixed;inset:0;background:linear-gradient(135deg,#00081a,#001028 45%,#0a1830);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;overflow:auto}
 .auth-box{width:100%;max-width:420px;background:linear-gradient(145deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:20px;padding:30px 26px;box-shadow:var(--shadow)}
@@ -525,6 +554,27 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 
 <div class="toast" id="toast"></div>
 
+<button class="chat-fab" id="chatFab" type="button" onclick="toggleChat()" aria-label="Abrir assistente BronkBot">
+  💬<span class="chat-fab-dot" id="chatFabDot"></span>
+</button>
+
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <img class="chat-header-logo" src="logo.png" alt="">
+    <div class="chat-header-text">
+      <b>BronkBot</b>
+      <div class="chat-status"><i></i> Assistente sobre bronquiolite</div>
+    </div>
+    <button type="button" class="chat-close" onclick="toggleChat(false)">×</button>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-suggestions" id="chatSuggestions"></div>
+  <form class="chat-input-row" id="chatForm">
+    <input id="chatInput" placeholder="Pergunte sobre bronquiolite..." autocomplete="off">
+    <button type="submit" class="chat-send" aria-label="Enviar">➤</button>
+  </form>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
@@ -555,6 +605,163 @@ function showToast(msg){
   clearTimeout(toastTimer);
   toastTimer=setTimeout(function(){ t.classList.remove('show'); },3200);
 }
+
+// ---- BronkBot: assistente de perguntas e respostas sobre bronquiolite ----
+// Base de conhecimento organizada por tema. Respostas marcadas como função usam
+// os dados reais já carregados no site (MONTHLY_CASOS/MONTHLY_LABELS), então
+// acompanham automaticamente o que estiver vindo do banco (ou do simulado,
+// se os dados reais ainda não tiverem chegado).
+const CHAT_KB=[
+  {
+    id:'sobre',
+    label:'O que é o BronkAlert?',
+    keywords:['bronkalert','sobre o sistema','sobre o site','o que e esse app','o que e o site','o que voce faz'],
+    answer:'O <b>BronkAlert</b> é um sistema de monitoramento e alerta sobre bronquiolite infantil: acompanha indicadores de saúde da criança, mostra o nível de risco por região e traz informação confiável para ajudar famílias e profissionais de saúde a agir cedo — "Prevenir hoje, proteger amanhã".'
+  },
+  {
+    id:'oque',
+    label:'O que é bronquiolite?',
+    keywords:['o que e bronquiolite','oque e bronquiolite','que e bronquiolite','definicao','o que e a doenca'],
+    answer:'A <b>bronquiolite</b> é uma infecção respiratória que inflama e obstrui os bronquíolos (as menores vias aéreas dos pulmões). É mais comum em bebês e crianças até 2 anos, e costuma ser mais frequente nos meses mais frios do ano.'
+  },
+  {
+    id:'causas',
+    label:'Quais as principais causas?',
+    keywords:['causa','causas','por que pega','como pega','transmissao','contagio','virus','vsr'],
+    answer:'A causa mais comum é o <b>vírus sincicial respiratório (VSR)</b>, responsável pela maioria dos casos. A transmissão acontece por gotículas de tosse/espirro ou contato com superfícies contaminadas — por isso lavar bem as mãos ajuda bastante a prevenir.'
+  },
+  {
+    id:'sintomas',
+    label:'Quais os sintomas?',
+    keywords:['sintoma','sintomas','sinais','como saber se e bronquiolite'],
+    answer:'Os principais sinais são: <b>tosse persistente</b>, <b>chiado no peito</b>, respiração rápida ou com esforço, coriza, febre baixa e irritabilidade ou dificuldade para se alimentar.'
+  },
+  {
+    id:'prevencao',
+    label:'Como prevenir?',
+    keywords:['prevenir','prevencao','evitar','proteger','como me proteger'],
+    answer:'As principais formas de prevenção: lavar bem as mãos, evitar contato com pessoas resfriadas, não fumar perto de crianças, manter a amamentação e a vacinação em dia, e evitar ambientes muito fechados ou aglomerados na época de mais casos.'
+  },
+  {
+    id:'risco',
+    label:'Quem tem mais risco?',
+    keywords:['risco','grupo de risco','quem corre risco','bebe prematuro','crianca com problema no coracao'],
+    answer:'Têm maior risco de complicações: bebês prematuros, crianças com menos de 3 meses, crianças com doenças cardíacas ou pulmonares prévias, e crianças com imunidade baixa.'
+  },
+  {
+    id:'medico',
+    label:'Quando procurar um médico?',
+    keywords:['medico','hospital','emergencia','quando procurar','urgencia','pronto socorro'],
+    answer:'Procure atendimento médico se houver: <b>dificuldade intensa para respirar</b>, lábios ou pele arroxeados, recusa de líquidos, febre alta persistente, ou sonolência incomum e muita irritabilidade.'
+  },
+  {
+    id:'epoca',
+    label:'Qual época tem mais casos?',
+    keywords:['epoca','mes','quando tem mais casos','sazonalidade','inverno','qual mes'],
+    answer:function(){
+      var idxMax=0;
+      MONTHLY_CASOS.forEach(function(v,i){ if(v>MONTHLY_CASOS[idxMax]) idxMax=i; });
+      var labels=MONTHLY_LABELS||monthLabelsBack(MONTHLY_CASOS.length);
+      return 'Nos dados monitorados, o mês com mais casos registrados foi <b>'+labels[idxMax]+'</b>, com <b>'+MONTHLY_CASOS[idxMax]+'</b> internações. Isso é esperado: a bronquiolite costuma ser mais comum nos meses mais frios, quando o vírus circula mais e as pessoas passam mais tempo em ambientes fechados.';
+    }
+  },
+  {
+    id:'atual',
+    label:'Como está a situação agora?',
+    keywords:['situacao atual','agora','ultimo mes','tendencia','como esta hoje'],
+    answer:function(){
+      var last=MONTHLY_CASOS[MONTHLY_CASOS.length-1];
+      var t=trendInfo(MONTHLY_CASOS);
+      var labels=MONTHLY_LABELS||monthLabelsBack(MONTHLY_CASOS.length);
+      return 'No último mês monitorado (<b>'+labels[labels.length-1]+'</b>), foram registrados <b>'+last+'</b> casos. A tendência dos últimos '+MONTHLY_CASOS.length+' meses é de <b>'+t.text.toLowerCase()+'</b>.';
+    }
+  }
+];
+const DEFAULT_CHAT_SUGGESTIONS=['oque','causas','sintomas','prevencao','epoca','medico'];
+
+function normalizeChat(s){
+  var str=(s||'').toLowerCase().normalize('NFD');
+  var out='';
+  for(var i=0;i<str.length;i++){
+    var code=str.charCodeAt(i);
+    if(code>=0x0300 && code<=0x036f) continue; // remove acentos (marcas diacriticas combinantes)
+    out+=str[i];
+  }
+  return out.replace(/[^\w\s]/g,' ').trim();
+}
+function findChatAnswer(text){
+  var norm=normalizeChat(text);
+  var best=null, bestScore=0;
+  CHAT_KB.forEach(function(item){
+    var score=0;
+    item.keywords.forEach(function(k){
+      if(norm.indexOf(normalizeChat(k))!==-1) score+=k.split(' ').length;
+    });
+    if(score>bestScore){ bestScore=score; best=item; }
+  });
+  return best;
+}
+function chatAnswerText(item){
+  return typeof item.answer==='function'?item.answer():item.answer;
+}
+function addChatMessage(role,html){
+  var wrap=document.getElementById('chatMessages');
+  var div=document.createElement('div');
+  div.className='chat-msg '+role;
+  div.innerHTML=html;
+  wrap.appendChild(div);
+  wrap.scrollTop=wrap.scrollHeight;
+}
+function renderChatSuggestions(ids){
+  var wrap=document.getElementById('chatSuggestions');
+  wrap.innerHTML='';
+  ids.forEach(function(id){
+    var item=CHAT_KB.filter(function(k){return k.id===id;})[0];
+    if(!item) return;
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.className='chat-chip';
+    btn.textContent=item.label;
+    btn.onclick=function(){ askChat(item.label,item); };
+    wrap.appendChild(btn);
+  });
+}
+function askChat(displayText,knownItem){
+  addChatMessage('user',displayText);
+  var item=knownItem||findChatAnswer(displayText);
+  setTimeout(function(){
+    if(item){
+      addChatMessage('bot',chatAnswerText(item));
+      renderChatSuggestions(DEFAULT_CHAT_SUGGESTIONS.filter(function(id){return id!==item.id;}).slice(0,4));
+    } else {
+      addChatMessage('bot','Ainda não tenho certeza sobre isso. Pergunte sobre sintomas, causas, prevenção, grupos de risco, quando procurar um médico ou a época do ano com mais casos.');
+      renderChatSuggestions(DEFAULT_CHAT_SUGGESTIONS);
+    }
+  },350);
+}
+let chatOpenedOnce=false;
+function toggleChat(force){
+  const panel=document.getElementById('chatPanel');
+  const show=typeof force==='boolean'?force:!panel.classList.contains('show');
+  panel.classList.toggle('show',show);
+  if(show){
+    document.getElementById('chatFabDot').classList.remove('show');
+    if(!chatOpenedOnce){
+      chatOpenedOnce=true;
+      addChatMessage('bot','Olá! Eu sou o <b>BronkBot</b> 🤖. Posso te ajudar com informações sobre bronquiolite: causas, sintomas, prevenção e como estão os casos monitorados. O que você quer saber?');
+      renderChatSuggestions(DEFAULT_CHAT_SUGGESTIONS);
+    }
+    setTimeout(function(){ const el=document.getElementById('chatInput'); if(el) el.focus(); },150);
+  }
+}
+document.getElementById('chatForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  const input=document.getElementById('chatInput');
+  const text=input.value.trim();
+  if(!text) return;
+  input.value='';
+  askChat(text);
+});
 
 function saveModal(){
   const s=document.getElementById('mspo').value, r=document.getElementById('mresp').value;
@@ -1075,6 +1282,9 @@ function renderLocation(loc){
 
   window.closeWelcome=function(){
     document.getElementById('welcomeModal').classList.remove('show');
+    // Abre o BronkBot automaticamente logo após o alerta de boas-vindas,
+    // já com sugestões de pergunta — sem empilhar dois pop-ups de uma vez.
+    setTimeout(function(){ toggleChat(true); },600);
   };
 
   window.logout=function(){
