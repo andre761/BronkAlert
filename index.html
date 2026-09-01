@@ -829,6 +829,8 @@ const MONTHLY_CASOS=[118,165,245,312,288,214]; // 6 meses atrás → mês atual
 // verdade do banco (podem não bater com "hoje", já que o Gold real tem um recorte
 // fixo de datas) — até lá, ficam null e usamos os meses calculados a partir de hoje.
 let MONTHLY_LABELS=null;
+let DAILY_LABELS=null;
+let WEEKLY_LABELS=null;
 const WEEKLY_CASOS=[112,98,84,71];             // 4 semanas atrás → semana atual
 const DAILY_CASOS=[22,20,19,17,16,15,14];      // 7 dias atrás → hoje
 // Faixas etárias no formato que a VW_PERFIL_PACIENTE_MENSAL realmente fornece
@@ -865,8 +867,8 @@ function weekLabelsBack(n){
 }
 
 const EVO_CONFIG={
-  '7d':{values:function(){return DAILY_CASOS;}, labels:function(){return dayLabelsBack(DAILY_CASOS.length);}},
-  '30d':{values:function(){return WEEKLY_CASOS;}, labels:function(){return weekLabelsBack(WEEKLY_CASOS.length);}},
+  '7d':{values:function(){return DAILY_CASOS;}, labels:function(){return DAILY_LABELS||dayLabelsBack(DAILY_CASOS.length);}},
+  '30d':{values:function(){return WEEKLY_CASOS;}, labels:function(){return WEEKLY_LABELS||weekLabelsBack(WEEKLY_CASOS.length);}},
   '3m':{
     values:function(){return MONTHLY_CASOS.slice(-3);},
     labels:function(){return MONTHLY_LABELS?MONTHLY_LABELS.slice(-3):monthLabelsBack(3);}
@@ -1007,22 +1009,15 @@ const SP_CENTER=[-23.5505,-46.6333];
 let REAL_DATA=null;
 async function loadRealData(){
   let d=null;
-  // 1ª opção: dados em tempo real, direto do Oracle Autonomous Database (Netlify Function).
+  // Sem tempo real por enquanto (a rede do Autonomous Database bloqueia o
+  // Netlify) — usa o último snapshot exportado manualmente com
+  // scripts/export_gold_to_json.py. A função netlify/functions/oracle-data.js
+  // continua no repositório, pronta pra reativar bastando trocar este fetch
+  // de volta, se/quando a rede do banco liberar acesso externo.
   try{
-    const res=await fetch('/.netlify/functions/oracle-data',{cache:'no-store'});
+    const res=await fetch('data/gold/bronquiolite.json',{cache:'no-store'});
     if(res.ok) d=await res.json();
-  }catch(e){ /* segue para a próxima opção */ }
-
-  // 2ª opção: último snapshot exportado manualmente (scripts/export_gold_to_json.py).
-  if(!d || d.used_fallback){
-    try{
-      const res=await fetch('data/gold/bronquiolite.json',{cache:'no-store'});
-      if(res.ok){
-        const snapshot=await res.json();
-        if(!d || (!snapshot.used_fallback && d.used_fallback)) d=snapshot;
-      }
-    }catch(e){ /* segue com os dados simulados já carregados por padrão */ }
-  }
+  }catch(e){ /* segue com os dados simulados já carregados por padrão */ }
 
   if(!d) return;
   try{
@@ -1042,9 +1037,15 @@ async function loadRealData(){
     }
     if(Array.isArray(d.daily_casos) && d.daily_casos.length===DAILY_CASOS.length){
       DAILY_CASOS.splice(0,DAILY_CASOS.length,...d.daily_casos);
+      if(Array.isArray(d.daily_labels) && d.daily_labels.length===DAILY_CASOS.length){
+        DAILY_LABELS=d.daily_labels.slice();
+      }
     }
     if(Array.isArray(d.weekly_casos) && d.weekly_casos.length===WEEKLY_CASOS.length){
       WEEKLY_CASOS.splice(0,WEEKLY_CASOS.length,...d.weekly_casos);
+      if(Array.isArray(d.weekly_labels) && d.weekly_labels.length===WEEKLY_CASOS.length){
+        WEEKLY_LABELS=d.weekly_labels.slice();
+      }
     }
     if(d.sp_zones){
       Object.keys(SP_ZONES).forEach(function(k){
@@ -1059,14 +1060,23 @@ async function loadRealData(){
 
     if(!d.used_fallback){
       const label=(d.source||'').toLowerCase().includes('oracle')?'Dados reais (Oracle Cloud)':'Dados reais (DATASUS)';
-      ['spDataPill','evoDataPill','ageDataPill'].forEach(function(id){
+      const markReal=function(id){
         const el=document.getElementById(id);
         if(el){
           el.textContent=label;
           el.classList.add('real');
           el.title='Fonte: '+d.source+' · atualizado em '+d.generated_at;
         }
-      });
+      };
+      // evolução e faixa etária vêm de números reais das views do Oracle.
+      markReal('evoDataPill');
+      markReal('ageDataPill');
+      // zonas de SP e alerta atual continuam simulados (sem base real
+      // confiável nas amostras disponíveis) — só marca como real se o
+      // snapshot realmente trouxer um alerta calculado a partir do banco.
+      if(d.alert_status && typeof d.alert_casos==='number'){
+        markReal('spDataPill');
+      }
     }
 
     // Caso os gráficos/mapa já tenham sido desenhados antes desta busca terminar, atualiza de novo.

@@ -1,59 +1,15 @@
 {
-  "generated_at": "2026-08-31",
-  "source": "Oracle Autonomous Database (FIAP_OCI_GOLD) — exportado manualmente",
-  "monthly_labels": [
-    "07/2025",
-    "08/2025",
-    "09/2025",
-    "10/2025",
-    "11/2025",
-    "12/2025"
-  ],
-  "monthly_casos": [
-    2215,
-    1773,
-    1723,
-    1863,
-    1388,
-    711
-  ],
+  "generated_at": "2026-09-01",
+  "source": "Oracle Autonomous Database (FIAP_OCI_GOLD) — leitura manual das views, sem conexão em tempo real",
+  "monthly_labels": ["07/2025", "08/2025", "09/2025", "10/2025", "11/2025", "12/2025"],
+  "monthly_casos": [2215, 1773, 1723, 1863, 1388, 711],
+  "daily_labels": ["02/01/2025", "03/01/2025", "04/01/2025", "05/01/2025", "06/01/2025", "07/01/2025", "08/01/2025"],
+  "daily_casos": [44, 31, 23, 28, 29, 30, 22],
+  "weekly_labels": ["30/06/2025", "11/08/2025", "25/08/2025", "15/09/2025"],
+  "weekly_casos": [672, 436, 366, 423],
   "age_data": {
-    "labels": [
-      "0–3 meses",
-      "4–6 meses",
-      "7–12 meses",
-      "1–2 anos",
-      "Acima de 2 anos"
-    ],
-    "values": [
-      89,
-      76,
-      54,
-      31,
-      12
-    ]
-  },
-  "sp_zones": {
-    "centro": {
-      "name": "Centro",
-      "casos": 14
-    },
-    "norte": {
-      "name": "Zona Norte",
-      "casos": 23
-    },
-    "sul": {
-      "name": "Zona Sul",
-      "casos": 0
-    },
-    "leste": {
-      "name": "Zona Leste",
-      "casos": 19
-    },
-    "oeste": {
-      "name": "Zona Oeste",
-      "casos": 11
-    }
+    "labels": ["Menor de 1 ano", "1 a 2 anos", "Maior de 2 anos"],
+    "values": [549, 115, 57]
   },
   "used_fallback": false
 }
