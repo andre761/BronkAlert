@@ -248,7 +248,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
   <nav class="nav">
     <button id="navMonitoramento" class="active" onclick="showPage('monitoramento',this)"><span>◉</span>Monitoramento</button>
     <button id="navBronquiolite" onclick="showPage('bronquiolite',this)"><span>🫁</span>Bronquiolite</button>
-    <button id="navDashboard" onclick="showPage('dashboard',this)"><span>⌂</span>Dashboard</button>
+    <button id="navDashboard" onclick="showPage('dashboard',this)"><span>⌂</span>Mapa de riscos</button>
     <button id="navAvaliacao" onclick="showPage('avaliacao',this)"><span>✚</span>Avaliação</button>
     <button id="navLinguagem" onclick="showPage('linguagem',this)"><span>💬</span>Linguagem natural</button>
     <button id="navPerfil" onclick="showPage('perfil',this)"><span>⚙</span>Perfil</button>
@@ -258,15 +258,8 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 
 <main class="main">
 <section id="dashboard" class="page">
-  <div class="top"><div><h1>Olá, <span id="greetName">André</span> 👋</h1><div class="sub">Acompanhe seus indicadores respiratórios em tempo real.</div></div>
-  <div class="user"><div><b>Paciente</b><div class="sub">Monitoramento ativo</div></div><div class="avatar" id="greetAvatar">A</div></div></div>
-
-  <div class="grid">
-    <div class="card"><div class="label">Saturação de O₂</div><div class="metric">97%</div><div class="status ok">● Dentro do esperado</div></div>
-    <div class="card"><div class="label">Frequência respiratória</div><div class="metric">16 <small style="font-size:13px;color:#91a4b9">irpm</small></div><div class="status ok">● Estável</div></div>
-    <div class="card"><div class="label">Temperatura</div><div class="metric">36,6°</div><div class="status ok">● Normal</div></div>
-    <div class="card"><div class="label">Risco estimado</div><div class="metric">Baixo</div><div class="status ok">● 18% nas últimas 24h</div></div>
-  </div>
+  <div class="top"><div><h1>🗺️ Mapa de riscos</h1><div class="sub">Visão geral do risco de bronquiolite por região e por hospital.</div></div>
+  <div class="user"><div><b>Administrador</b><div class="sub">Monitoramento ativo</div></div><div class="avatar">A</div></div></div>
 
   <div class="section">
     <div class="card map-card">
@@ -365,33 +358,7 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
     </div>
   </div>
 
-  <div class="section two">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px"><div><h2>Monitoramento respiratório</h2><div class="live"><i></i> Atualização em tempo real</div></div><button class="action" onclick="openModal()">Nova avaliação</button></div>
-      <div class="chart">
-        <svg viewBox="0 0 800 230" preserveAspectRatio="none">
-          <defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#39b9ff" stop-opacity=".28"/><stop offset="1" stop-color="#39b9ff" stop-opacity="0"/></linearGradient></defs>
-          <path d="M0 165 C45 145 60 158 95 140 S145 150 175 118 S225 130 260 105 S310 125 350 92 S400 125 440 108 S490 115 530 76 S580 100 620 82 S670 95 710 60 S760 78 800 52 L800 230 L0 230Z" fill="url(#fill)"/>
-          <path d="M0 165 C45 145 60 158 95 140 S145 150 175 118 S225 130 260 105 S310 125 350 92 S400 125 440 108 S490 115 530 76 S580 100 620 82 S670 95 710 60 S760 78 800 52" fill="none" stroke="#39b9ff" stroke-width="4"/>
-          <g stroke="#1b354e" stroke-width="1"><line x1="0" y1="50" x2="800" y2="50"/><line x1="0" y1="105" x2="800" y2="105"/><line x1="0" y1="160" x2="800" y2="160"/><line x1="0" y1="215" x2="800" y2="215"/></g>
-        </svg>
-      </div>
-      <div class="legend"><span>● Saturação</span><span>Últimas 24 horas</span><span>Fonte: sensores conectados</span></div>
-    </div>
-    <div class="card">
-      <h2>Alertas recentes</h2>
-      <div class="alert"><div class="dot"></div><div><b>Possível queda de saturação</b><p>Detectada às 19:42. Valor mínimo registrado: 93%.</p></div></div>
-      <div class="alert" style="border-color:#28445b"><div class="dot" style="background:var(--yellow);box-shadow:0 0 12px var(--yellow)"></div><div><b>Sintomas registrados</b><p>Tosse e falta de ar informadas na última avaliação.</p></div></div>
-      <button class="action" style="width:100%;margin-top:4px" onclick="showPage('monitoramento',document.getElementById('navMonitoramento'))">Ver monitoramento</button>
-    </div>
-  </div>
 
-  <div class="section"><h2>Ações rápidas</h2><div class="quick">
-    <div class="card" onclick="openModal()"><div class="icon">🫁</div><b>Fazer avaliação</b><div class="small">Registrar sintomas e sinais.</div></div>
-    <div class="card" onclick="showPage('monitoramento',document.getElementById('navMonitoramento'))"><div class="icon">📊</div><b>Ver evolução</b><div class="small">Acompanhar os casos ao longo do tempo.</div></div>
-    <div class="card" onclick="showToast('Fluxo demonstrativo: em uma versão real, esta ação acionaria o protocolo configurado.')"><div class="icon">🚨</div><b>Protocolo de alerta</b><div class="small">Consultar orientação de emergência.</div></div>
-    <div class="card" onclick="showPage('bronquiolite',document.getElementById('navBronquiolite'))"><div class="icon">📖</div><b>Sobre a bronquiolite</b><div class="small">Sintomas, prevenção e cuidados.</div></div>
-  </div></div>
 </section>
 
 <section id="bronquiolite" class="page">
@@ -2091,9 +2058,6 @@ function renderLocation(loc){
 
   function applyUserToUI(user){
     user=user||{};
-    const first=(user.nome||'Visitante').trim().split(' ')[0];
-    const el1=document.getElementById('greetName'); if(el1) el1.textContent=first;
-    const el2=document.getElementById('greetAvatar'); if(el2) el2.textContent=first.charAt(0).toUpperCase();
     const el3=document.getElementById('perfilNome'); if(el3) el3.textContent=user.nome||'Visitante';
     // Sem cadastro de endereço — só mostra algo customizado se um dia vier
     // preenchido; do contrário mantém o texto padrão já no HTML.
