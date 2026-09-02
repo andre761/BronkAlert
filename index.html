@@ -84,6 +84,11 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 .auth-screen{position:fixed;inset:0;background:linear-gradient(135deg,#00081a,#001028 45%,#0a1830);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;overflow:auto}
 .auth-box{width:100%;max-width:420px;background:linear-gradient(145deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:20px;padding:30px 26px;box-shadow:var(--shadow)}
 .auth-logo{width:190px;height:auto;display:block;margin:0 auto 22px;border-radius:6px}
+.welcome-box{max-width:480px;text-align:center}
+.welcome-title{font-size:24px;margin:0 0 16px}
+.welcome-text{color:var(--muted);font-size:14.5px;line-height:1.65;text-align:left;margin:0 0 14px}
+.welcome-text b{color:var(--text)}
+#enterAppBtn{margin-top:8px;padding:14px 16px;font-size:15px}
 .auth-tabs{display:flex;background:#09182a;border-radius:12px;padding:4px;margin-bottom:18px}
 .auth-tab{flex:1;background:transparent;border:0;color:var(--muted);padding:10px;border-radius:9px;font-weight:700;cursor:pointer}
 .auth-tab.active{background:linear-gradient(135deg,var(--brand-red),var(--brand-red2));color:#fff}
@@ -221,44 +226,19 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 <body>
 
 <div class="auth-screen" id="authScreen">
-  <div class="auth-box">
+  <div class="auth-box welcome-box">
     <img class="auth-logo" src="logo.png" alt="BronqAlert">
-    <div class="auth-tabs">
-      <button type="button" class="auth-tab active" data-tab="login">Entrar</button>
-      <button type="button" class="auth-tab" data-tab="cadastro">Criar conta</button>
-    </div>
-
-    <form id="loginForm" class="auth-form active">
-      <label>E-mail</label>
-      <input id="loginEmail" name="email" type="email" autocomplete="email">
-      <label>Senha</label>
-      <input id="loginPass" name="password" type="password" autocomplete="current-password">
-      <p class="auth-error" id="loginError"></p>
-      <button class="action" style="width:100%" type="submit">Entrar</button>
-    </form>
-
-    <form id="cadastroForm" class="auth-form">
-      <label>Nome completo</label>
-      <input id="regNome" name="name">
-      <label>Endereço <small style="color:var(--red);font-weight:700">*</small></label>
-      <input id="regEndereco" name="street-address">
-      <div class="auth-row">
-        <div><label>Número <small style="color:var(--red);font-weight:700">*</small></label><input id="regNumero" name="address-number"></div>
-        <div><label>CEP <small style="color:var(--red);font-weight:700">*</small></label><input id="regCep" name="postal-code"></div>
-      </div>
-      <label>Cidade <small style="color:var(--red);font-weight:700">*</small></label>
-      <input id="regCidade" name="address-level2">
-      <label>E-mail</label>
-      <input id="regEmail" name="new-email" type="email" autocomplete="email">
-      <div class="auth-row">
-        <div><label>Senha</label><input id="regPass" name="new-password" type="password" autocomplete="new-password"></div>
-        <div><label>Confirmar senha</label><input id="regPass2" name="new-password2" type="password" autocomplete="new-password"></div>
-      </div>
-      <p class="auth-error" id="regError"></p>
-      <button class="action" style="width:100%" type="submit">Criar conta e entrar</button>
-    </form>
-
-    <p class="auth-note">Protótipo demonstrativo — os dados de cadastro ficam salvos apenas neste navegador (localStorage), não em um servidor real.</p>
+    <h1 class="welcome-title">Bem-vindo ao BronqAlert 👋</h1>
+    <p class="welcome-text">
+      Este é o nosso painel de monitoramento da <b>bronquiolite</b> — uma das doenças respiratórias mais críticas da infância, que ainda mata todos os anos e sobre a qual poucas famílias têm informações claras.
+    </p>
+    <p class="welcome-text">
+      A maior parte dos óbitos acontece em bebês de <b>0 a 3 meses</b>, e é justamente para mães de primeira viagem — que muitas vezes não sabem reconhecer os sinais a tempo — que essa informação faz mais diferença.
+    </p>
+    <p class="welcome-text">
+      A seguir, você acompanha a evolução real dos casos, entende os sintomas e sinais de alerta, e sabe quando procurar ajuda médica.
+    </p>
+    <button class="action" id="enterAppBtn" style="width:100%" type="button">Acessar o monitoramento</button>
   </div>
 </div>
 
@@ -634,11 +614,11 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 
 <section id="perfil" class="page">
   <div class="top"><div><h1>Perfil</h1><div class="sub">Configurações do usuário e monitoramento.</div></div></div>
-  <div class="card" style="max-width:720px"><h2 id="perfilNome">André</h2><p class="sub">Paciente · Monitoramento ativo</p><hr style="border-color:var(--line);border-width:1px 0 0;margin:20px 0">
-  <p><b>Endereço</b><br><span class="sub" id="perfilEndereco">—</span></p>
+  <div class="card" style="max-width:720px"><h2 id="perfilNome">Visitante</h2><p class="sub">Monitoramento ativo</p><hr style="border-color:var(--line);border-width:1px 0 0;margin:20px 0">
+  <p><b>Localização</b><br><span class="sub" id="perfilEndereco">Estimada automaticamente pelo GPS do navegador (sem cadastro de endereço).</span></p>
   <p><b>Contato de emergência</b><br><span class="sub">Configuração disponível no app real.</span></p>
   <p><b>Dispositivos conectados</b><br><span class="sub">Oxímetro / wearable · conectado</span></p>
-  <button class="action" style="margin-top:6px" type="button" onclick="logout()">Sair da conta</button>
+  <button class="action" style="margin-top:6px" type="button" onclick="logout()">Voltar à tela inicial</button>
   </div>
 </section>
 </main>
@@ -2102,27 +2082,29 @@ function renderLocation(loc){
 }
 
 (function(){
-  const USERS_KEY='bronqalert_users_v2';
-  const SESSION_KEY='bronqalert_session_v2';
+  // Sem cadastro/login: só um flag lembrando que a pessoa já viu a tela de
+  // boas-vindas, pra não mostrar de novo a cada recarregamento da página.
+  const SESSION_KEY='bronqalert_session_v3';
 
-  // Esquema de cadastro mudou de usuário para e-mail: qualquer conta antiga
-  // (versão anterior do protótipo) é descartada.
+  // Versões anteriores do protótipo tinham conta com e-mail/senha — qualquer
+  // dado salvo dessa forma é descartado (não usamos mais).
   localStorage.removeItem('bronqalert_users');
   localStorage.removeItem('bronqalert_session');
-
-  function getUsers(){
-    try{ return JSON.parse(localStorage.getItem(USERS_KEY))||{}; }
-    catch(e){ return {}; }
-  }
-  function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
-  function isValidEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+  localStorage.removeItem('bronqalert_users_v2');
+  localStorage.removeItem('bronqalert_session_v2');
 
   function applyUserToUI(user){
-    const first=(user.nome||'Paciente').trim().split(' ')[0];
+    user=user||{};
+    const first=(user.nome||'Visitante').trim().split(' ')[0];
     const el1=document.getElementById('greetName'); if(el1) el1.textContent=first;
     const el2=document.getElementById('greetAvatar'); if(el2) el2.textContent=first.charAt(0).toUpperCase();
-    const el3=document.getElementById('perfilNome'); if(el3) el3.textContent=user.nome||'Paciente';
-    const el4=document.getElementById('perfilEndereco'); if(el4) el4.textContent=(user.endereco||'')+', '+(user.numero||'')+' · '+(user.cidade||'')+' · CEP '+(user.cep||'');
+    const el3=document.getElementById('perfilNome'); if(el3) el3.textContent=user.nome||'Visitante';
+    // Sem cadastro de endereço — só mostra algo customizado se um dia vier
+    // preenchido; do contrário mantém o texto padrão já no HTML.
+    if(user.endereco){
+      const el4=document.getElementById('perfilEndereco');
+      if(el4) el4.textContent=user.endereco+', '+(user.numero||'')+' · '+(user.cidade||'')+' · CEP '+(user.cep||'');
+    }
   }
 
   function showAlertPopup(zoneKey){
@@ -2192,70 +2174,13 @@ function renderLocation(loc){
     showAuth();
   };
 
-  document.querySelectorAll('.auth-tab').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      document.querySelectorAll('.auth-tab').forEach(function(b){b.classList.remove('active')});
-      document.querySelectorAll('.auth-form').forEach(function(f){f.classList.remove('active')});
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.tab+'Form').classList.add('active');
-    });
+  document.getElementById('enterAppBtn').addEventListener('click',function(){
+    localStorage.setItem(SESSION_KEY,'1');
+    showApp({});
   });
 
-  document.getElementById('loginForm').addEventListener('submit',function(e){
-    e.preventDefault();
-    const email=document.getElementById('loginEmail').value.trim().toLowerCase();
-    const p=document.getElementById('loginPass').value;
-    const err=document.getElementById('loginError');
-    const users=getUsers();
-    if(!email || !users[email] || users[email].senha!==p){
-      err.textContent='E-mail ou senha incorretos.';
-      return;
-    }
-    err.textContent='';
-    localStorage.setItem(SESSION_KEY,email);
-    showApp(users[email]);
-  });
-
-  document.getElementById('cadastroForm').addEventListener('submit',function(e){
-    e.preventDefault();
-    const nome=document.getElementById('regNome').value.trim();
-    const endereco=document.getElementById('regEndereco').value.trim();
-    const numero=document.getElementById('regNumero').value.trim();
-    const cidade=document.getElementById('regCidade').value.trim();
-    const cep=document.getElementById('regCep').value.trim();
-    const email=document.getElementById('regEmail').value.trim().toLowerCase();
-    const pass=document.getElementById('regPass').value;
-    const pass2=document.getElementById('regPass2').value;
-    const err=document.getElementById('regError');
-    const users=getUsers();
-
-    if(!nome||!endereco||!numero||!cidade||!cep||!email||!pass||!pass2){
-      err.textContent='Preencha todos os campos, incluindo endereço completo.';
-      return;
-    }
-    if(!isValidEmail(email)){
-      err.textContent='Informe um e-mail válido.';
-      return;
-    }
-    if(pass!==pass2){
-      err.textContent='As senhas não coincidem.';
-      return;
-    }
-    if(users[email]){
-      err.textContent='Já existe uma conta com esse e-mail.';
-      return;
-    }
-    err.textContent='';
-    users[email]={nome:nome,endereco:endereco,numero:numero,cidade:cidade,cep:cep,senha:pass};
-    saveUsers(users);
-    localStorage.setItem(SESSION_KEY,email);
-    showApp(users[email]);
-  });
-
-  const session=localStorage.getItem(SESSION_KEY);
-  const users=getUsers();
-  if(session && users[session]){
-    showApp(users[session]);
+  if(localStorage.getItem(SESSION_KEY)){
+    showApp({});
   } else {
     showAuth();
   }
