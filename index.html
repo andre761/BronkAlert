@@ -458,10 +458,6 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
     <div class="card"><div class="label">Temperatura</div><div class="metric" id="temp">36,6°</div><div class="status ok">● Estável</div></div>
     <div class="card"><div class="label">Sensor</div><div class="metric">Online</div><div class="status ok">● Sincronizado agora</div></div>
   </div>
-  <div class="section card"><h2>Central de acompanhamento</h2><p class="sub">Nesta demonstração, os valores são simulados e atualizados automaticamente para representar o comportamento de um aplicativo conectado a sensores.</p>
-    <div class="progress"><i></i></div><div class="small" style="margin-top:8px">Qualidade do sinal: excelente · Última sincronização: agora</div>
-  </div>
-
   <div class="section card">
     <h2>🎨 Entenda as cores do monitoramento</h2>
     <p class="sub" style="font-size:13px;margin-bottom:16px">O sensor conectado envia leituras de saturação, respiração e temperatura em tempo real. O sistema compara cada leitura com faixas de referência e classifica automaticamente com uma cor — assim dá pra saber de relance se é preciso agir.</p>
@@ -2163,9 +2159,6 @@ function renderLocation(loc){
 
   window.closeWelcome=function(){
     document.getElementById('welcomeModal').classList.remove('show');
-    // Abre o BronkBot automaticamente logo após o alerta de boas-vindas,
-    // já com sugestões de pergunta — sem empilhar dois pop-ups de uma vez.
-    setTimeout(function(){ toggleChat(true); },600);
   };
 
   window.logout=function(){
