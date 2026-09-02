@@ -733,9 +733,30 @@ const CHAT_KB=[
       var labels=MONTHLY_LABELS||monthLabelsBack(MONTHLY_CASOS.length);
       return 'No último mês monitorado (<b>'+labels[labels.length-1]+'</b>), foram registrados <b>'+last+'</b> casos. A tendência dos últimos '+MONTHLY_CASOS.length+' meses é de <b>'+t.text.toLowerCase()+'</b>.';
     }
+  },
+  {
+    id:'custoMes',
+    label:'Qual mês foi o maior custo?',
+    keywords:['maior custo','mes de maior custo','custo mais alto','qual mes custou mais','mes mais caro','mes com mais gasto'],
+    answer:function(){
+      var avg=typeof avgCostPerCase==='function'?avgCostPerCase():null;
+      if(!avg) return 'Ainda não tenho o custo médio por caso calculado a partir dos dados reais pra estimar isso.';
+      var idxMax=0;
+      MONTHLY_CASOS.forEach(function(v,i){ if(typeof v==='number' && (typeof MONTHLY_CASOS[idxMax]!=='number' || v>MONTHLY_CASOS[idxMax])) idxMax=i; });
+      var labels=MONTHLY_LABELS||monthLabelsBack(MONTHLY_CASOS.length);
+      var casos=MONTHLY_CASOS[idxMax];
+      var custo=Math.round(casos*avg);
+      return 'O mês com o <b>maior custo estimado</b> foi <b>'+labels[idxMax]+'</b>: '+casos+' casos de bronquiolite, custo estimado de <b>'+formatBRL(custo)+'</b>. É uma estimativa (casos reais do mês × custo médio real por caso) — o banco só tem o custo em R$ por semana, não por mês, então não dá pra pegar esse número direto.';
+    }
+  },
+  {
+    id:'obitosHospital',
+    label:'Qual hospital teve mais óbitos?',
+    keywords:['hospital com mais obitos','mais obitos','obitos por hospital','qual hospital teve mais mortes','hospital com mais mortes','numero de obitos'],
+    answer:'Ainda não temos, nos dados já lidos do Oracle, o número de óbitos por bronquiolite quebrado por hospital — só o volume real de internações (visível no ranking de hospitais). Prefiro te dizer isso a inventar um hospital, um número e um mês. Assim que essa informação vier numa exportação, atualizo essa resposta.'
   }
 ];
-const DEFAULT_CHAT_SUGGESTIONS=['oque','causas','sintomas','prevencao','epoca','medico'];
+const DEFAULT_CHAT_SUGGESTIONS=['oque','causas','prevencao','epoca','custoMes','obitosHospital'];
 
 function normalizeChat(s){
   var str=(s||'').toLowerCase().normalize('NFD');
