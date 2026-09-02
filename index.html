@@ -51,7 +51,8 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 @media(max-width:560px){.toast{bottom:18px;padding:12px 18px;font-size:13px}}
 
 /* BronkBot — assistente de chat */
-.chat-fab{position:fixed;right:24px;bottom:24px;width:58px;height:58px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--brand-red),var(--brand-red2));color:#fff;font-size:24px;cursor:pointer;box-shadow:0 12px 30px rgba(216,56,40,.45);z-index:70;display:flex;align-items:center;justify-content:center}
+.chat-fab{position:fixed;right:24px;bottom:24px;width:58px;height:58px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--brand-red),var(--brand-red2));color:#fff;font-size:24px;cursor:pointer;box-shadow:0 12px 30px rgba(216,56,40,.45);z-index:70;display:none;align-items:center;justify-content:center}
+.chat-fab.show{display:flex}
 .chat-fab:hover{filter:brightness(1.08)}
 .chat-fab-dot{position:absolute;top:6px;right:6px;width:11px;height:11px;border-radius:50%;background:var(--green);border:2px solid #04101f;display:none}
 .chat-fab-dot.show{display:block}
@@ -206,7 +207,14 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
   .map-wrap{padding:8px}
   .sp-map{height:300px}
   .mon-desc{min-width:0}
-  .mon-color{min-width:0}}
+  .mon-color{min-width:0}
+  .nav button{padding:15px 14px}
+  .month-chip,.period-tab,.sp-chip,.auth-tab{padding:10px 14px;font-size:12.5px}
+  .chart-card-head{gap:10px}
+  h1{font-size:23px}
+  .modalbox{padding:20px}
+  .alertbox{padding:28px 20px 22px}
+}
 @media(max-width:380px){.auth-row{grid-template-columns:1fr}.auth-box{padding:24px 18px}}
 </style>
 </head>
@@ -2151,6 +2159,7 @@ function renderLocation(loc){
   function showApp(user){
     document.getElementById('authScreen').style.display='none';
     document.querySelector('.app').style.display='flex';
+    document.getElementById('chatFab').classList.add('show');
     applyUserToUI(user);
     // Monitoramento é a tela inicial: chama showPage explicitamente (em vez de
     // confiar só na classe "active" do HTML) pra garantir que os gráficos
@@ -2165,6 +2174,9 @@ function renderLocation(loc){
   function showAuth(){
     document.getElementById('authScreen').style.display='flex';
     document.querySelector('.app').style.display='none';
+    document.getElementById('chatFab').classList.remove('show');
+    const chatPanel=document.getElementById('chatPanel');
+    if(chatPanel) chatPanel.classList.remove('show');
   }
 
   window.closeWelcome=function(){
