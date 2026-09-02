@@ -419,33 +419,6 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 
 <section id="monitoramento" class="page active">
   <div class="top"><div><h1>Monitoramento</h1><div class="sub">Acompanhamento contínuo dos indicadores.</div></div></div>
-  <div class="grid">
-    <div class="card"><div class="label">SpO₂</div><div class="metric" id="spo">97%</div><div class="status ok">● Conectado</div></div>
-    <div class="card"><div class="label">Respiração</div><div class="metric" id="resp">16</div><div class="status ok">● Estável</div></div>
-    <div class="card"><div class="label">Temperatura</div><div class="metric" id="temp">36,6°</div><div class="status ok">● Estável</div></div>
-    <div class="card"><div class="label">Sensor</div><div class="metric">Online</div><div class="status ok">● Sincronizado agora</div></div>
-  </div>
-  <div class="section card">
-    <h2>🎨 Entenda as cores do monitoramento</h2>
-    <p class="sub" style="font-size:13px;margin-bottom:16px">O sensor conectado envia leituras de saturação, respiração e temperatura em tempo real. O sistema compara cada leitura com faixas de referência e classifica automaticamente com uma cor — assim dá pra saber de relance se é preciso agir.</p>
-
-    <div class="mon-legend">
-      <div class="mon-row">
-        <div class="mon-color lvl0"><i class="dot lvl0"></i>Normal</div>
-        <div class="mon-desc"><b>SpO₂:</b> 95% ou mais &nbsp;·&nbsp; <b>Temperatura:</b> 36,0° a 37,2° &nbsp;·&nbsp; <b>Respiração:</b> dentro da faixa esperada para a idade. Nenhuma ação necessária.</div>
-      </div>
-      <div class="mon-row">
-        <div class="mon-color lvl1"><i class="dot lvl1"></i>Atenção</div>
-        <div class="mon-desc"><b>SpO₂:</b> 90% a 94% &nbsp;·&nbsp; <b>Temperatura:</b> 37,3° a 38° &nbsp;·&nbsp; <b>Respiração:</b> levemente acima do esperado. Vale observar de perto e repetir a medição em pouco tempo.</div>
-      </div>
-      <div class="mon-row">
-        <div class="mon-color lvl3"><i class="dot lvl3"></i>Alerta</div>
-        <div class="mon-desc"><b>SpO₂:</b> abaixo de 90% &nbsp;·&nbsp; <b>Temperatura:</b> acima de 38° &nbsp;·&nbsp; <b>Respiração:</b> muito rápida ou com esforço visível (chiado, retração no peito). Procure atendimento médico.</div>
-      </div>
-    </div>
-    <p class="sub" style="font-size:11.5px;margin-top:14px">Faixas de referência gerais para acompanhamento domiciliar — o profissional de saúde pode indicar valores diferentes conforme idade e histórico da criança.</p>
-  </div>
-
   <div class="section card">
     <div class="chart-card-head">
       <div>
@@ -600,11 +573,6 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
   </div>
 </div>
 
-<div class="modal" id="modal"><div class="modalbox"><button class="close" onclick="closeModal()">×</button><h2>Nova avaliação</h2><p class="sub">Preencha os dados para simular uma nova leitura.</p>
-<label>Saturação (%)</label><input id="mspo" type="number" value="97" min="70" max="100">
-<label>Frequência respiratória</label><input id="mresp" type="number" value="16" min="5" max="50">
-<button class="action" onclick="saveModal()">Salvar avaliação</button></div></div>
-
 <div class="toast" id="toast"></div>
 
 <button class="chat-fab" id="chatFab" type="button" onclick="toggleChat()" aria-label="Abrir assistente BronkBot">
@@ -648,8 +616,6 @@ function showPage(id,btn){
     }
   }
 }
-function openModal(){document.getElementById('modal').classList.add('show')}
-function closeModal(){document.getElementById('modal').classList.remove('show')}
 let toastTimer=null;
 function showToast(msg){
   const t=document.getElementById('toast');
@@ -825,20 +791,7 @@ document.addEventListener('click',function(e){
   toggleChat(false);
 });
 
-function saveModal(){
-  const s=document.getElementById('mspo').value, r=document.getElementById('mresp').value;
-  document.getElementById('spo').textContent=s+'%'; document.getElementById('resp').textContent=r;
-  closeModal(); showPage('monitoramento',document.getElementById('navMonitoramento'));
-  showToast('Avaliação registrada no protótipo.');
-}
 function saveAssessment(){showToast('Avaliação registrada com sucesso no protótipo.');}
-setInterval(()=>{
-  const s=97+Math.round((Math.random()-.5)*2);
-  const r=16+Math.round((Math.random()-.5)*2);
-  document.getElementById('spo').textContent=s+'%';
-  document.getElementById('resp').textContent=r;
-  document.getElementById('temp').textContent=(36.5+Math.random()*.2).toFixed(1).replace('.',',')+'°';
-},5000);
 
 (function(){
   const lvlNames=['Baixo','Moderado','Alto','Muito alto'];
