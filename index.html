@@ -19,6 +19,7 @@ button{font:inherit}.app{display:none;min-height:100vh}
 .brand img{width:205px;height:auto;border-radius:7px;display:block;margin:0 auto 28px}
 .nav button{width:100%;background:transparent;border:0;color:var(--muted);text-align:left;padding:13px 14px;border-radius:12px;margin:3px 0;cursor:pointer}
 .nav button:hover,.nav button.active{background:linear-gradient(135deg,var(--brand-red),var(--brand-red2));color:#fff}.nav span{margin-right:10px}
+.nav-toggle{display:none;width:40px;height:40px;align-items:center;justify-content:center;margin:0 auto 10px;background:#09182a;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:19px;cursor:pointer;flex-shrink:0}
 .sidebar .tag{position:absolute;bottom:25px;left:20px;right:20px;color:var(--muted);font-size:11px;text-align:center}
 .main{margin-left:250px;width:calc(100% - 250px);padding:28px 34px;min-width:0}
 .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;flex-wrap:wrap;gap:12px}
@@ -204,7 +205,20 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 .dot{width:12px;height:12px;border-radius:4px;display:inline-block;margin-right:7px;vertical-align:-1px}
 .dot.lvl0{background:var(--green)}.dot.lvl1{background:var(--yellow)}.dot.lvl2{background:var(--orange)}.dot.lvl3{background:var(--red)}
 
-@media(max-width:900px){.sidebar{width:72px}.brand img{width:48px;object-fit:cover;object-position:left;height:48px}.nav button{font-size:0;text-align:center}.nav span{font-size:18px;margin:0}.sidebar .tag{display:none}.main{margin-left:72px;width:calc(100% - 72px);padding:20px}.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.quick{grid-template-columns:1fr}}
+@media(max-width:900px){
+  .sidebar{width:72px}
+  .brand img{width:48px;object-fit:cover;object-position:left;height:48px}
+  .nav-toggle{display:flex}
+  .nav{display:none;position:absolute;top:84px;left:10px;width:240px;max-width:calc(100vw - 40px);background:#0b1c33;border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 20px 45px rgba(0,0,0,.5);z-index:20}
+  .nav.open{display:block}
+  .nav button{font-size:14px;text-align:left;padding:12px 14px}
+  .nav span{font-size:17px;margin:0 10px 0 0}
+  .sidebar .tag{display:none}
+  .main{margin-left:72px;width:calc(100% - 72px);padding:20px}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .two{grid-template-columns:1fr}
+  .quick{grid-template-columns:1fr}
+}
 @media(max-width:560px){.grid{grid-template-columns:1fr}.top{align-items:flex-start}.user{display:none}.main{padding:16px}
   .map-head{flex-direction:column}
   .map-summary{gap:14px}
@@ -245,7 +259,8 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 <div class="app">
 <aside class="sidebar">
   <div class="brand"><img src="logo.png" alt="BronqAlert"></div>
-  <nav class="nav">
+  <button class="nav-toggle" id="navToggle" type="button" onclick="toggleNav()" aria-label="Abrir menu">☰</button>
+  <nav class="nav" id="navMenu">
     <button id="navMonitoramento" class="active" onclick="showPage('monitoramento',this)"><span>◉</span>Monitoramento</button>
     <button id="navBronquiolite" onclick="showPage('bronquiolite',this)"><span>🫁</span>Bronquiolite</button>
     <button id="navDashboard" onclick="showPage('dashboard',this)"><span>⌂</span>Mapa de riscos</button>
@@ -599,7 +614,27 @@ table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}th,td{t
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
+// Menu de navegação: no mobile (sidebar ícone-só) vira um único botão
+// (☰) que abre a lista de páginas por cima do conteúdo; escolher uma
+// página ou clicar fora fecha o menu de novo.
+function toggleNav(force){
+  const menu=document.getElementById('navMenu');
+  const show=typeof force==='boolean'?force:!menu.classList.contains('open');
+  menu.classList.toggle('open',show);
+  const btn=document.getElementById('navToggle');
+  btn.textContent=show?'✕':'☰';
+  btn.setAttribute('aria-label',show?'Fechar menu':'Abrir menu');
+}
+document.addEventListener('click',function(e){
+  const menu=document.getElementById('navMenu');
+  const toggle=document.getElementById('navToggle');
+  if(!menu.classList.contains('open')) return;
+  if(menu.contains(e.target)||toggle.contains(e.target)) return;
+  toggleNav(false);
+});
+
 function showPage(id,btn){
+  toggleNav(false);
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
